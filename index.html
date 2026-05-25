@@ -3056,6 +3056,7 @@ function renderProjectorScoreboard(){
 let bcastChannel = null;
 let pairChannel = null;
 let storageKey = null;
+let wsConn = null;
 
 function initSyncBoard(){
   // El tablero es el "host". Crea un código y abre un canal.
@@ -3074,6 +3075,7 @@ function initSyncBoard(){
       setTimeout(()=>broadcastState(), 100);
     }
   };
+  initWebSocket(STATE.pairCode, 'board');
 }
 
 function initSyncRemote(code){
@@ -3103,15 +3105,45 @@ function initSyncRemote(code){
       }
     }catch(e){}
   }, 200);
+  initWebSocket(code, 'remote');
+}
+
+function initWebSocket(code, role){
+  if(location.protocol !== 'http:') return;
+  const wsUrl = `ws://${location.hostname}:8765`;
+  function connect(){
+    try{
+      const ws = new WebSocket(wsUrl);
+      ws.onopen = ()=>{
+        wsConn = ws;
+        ws.send(JSON.stringify({type:'join', code}));
+        if(role==='remote'){
+          setTimeout(()=>sendAction({type:'remote-hello', deviceId:STATE.myDeviceId}), 400);
+        } else {
+          setTimeout(()=>broadcastState(), 300);
+        }
+      };
+      ws.onmessage = (ev)=>{
+        try{
+          const msg = JSON.parse(ev.data);
+          if(role==='board') handleSyncMessage(msg);
+          else handleSyncMessageRemote(msg);
+        }catch(e){}
+      };
+      ws.onclose = ()=>{ wsConn=null; setTimeout(connect, 3000); };
+      ws.onerror = ()=>{};
+    }catch(e){}
+  }
+  connect();
 }
 
 function broadcastState(){
-  if(STATE.appMode!=='board' || !bcastChannel) return;
+  if(STATE.appMode!=='board') return;
   const snap = makeSnapshot();
-  bcastChannel.postMessage({type:'state', payload:snap});
-  // Fallback en localStorage para sincronización entre pestañas
+  const msg = {type:'state', payload:snap};
+  if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(msg));
+  if(bcastChannel) bcastChannel.postMessage(msg);
   try{ localStorage.setItem(storageKey, JSON.stringify(snap)); }catch(e){}
-  // Guardado normal
   saveLocal();
 }
 
@@ -3197,8 +3229,12 @@ function handleSyncMessage(msg){
 }
 
 function sendAction(action){
-  if(!bcastChannel) return;
-  bcastChannel.postMessage({type:'action', payload:action});
+  const msg = {type:'action', payload:action};
+  if(wsConn && wsConn.readyState===WebSocket.OPEN){
+    wsConn.send(JSON.stringify(msg));
+  } else if(bcastChannel){
+    bcastChannel.postMessage(msg);
+  }
 }
 
 function handleRemoteAction(action){
@@ -3211,7 +3247,9 @@ function handleRemoteAction(action){
       logEvent(`${free.name} conectó su celular`, free.color);
       broadcastState();
       // Confirmar al cliente cuál es su id
-      bcastChannel.postMessage({type:'assign', payload:{deviceId:action.deviceId, playerId:free.id}});
+      const asgMsg = {type:'assign', payload:{deviceId:action.deviceId, playerId:free.id}};
+      if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(asgMsg));
+      if(bcastChannel) bcastChannel.postMessage(asgMsg);
     }
     return;
   }
