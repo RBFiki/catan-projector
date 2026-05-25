@@ -3052,11 +3052,63 @@ function renderProjectorScoreboard(){
   });
 }
 
-/* =============== MÓDULO 16: SINCRONIZACIÓN (BroadcastChannel + WebSocket) ===== */
+/* =============== MÓDULO 16: SINCRONIZACIÓN (BroadcastChannel + WS + WebRTC) === */
 let bcastChannel = null;
 let pairChannel = null;
 let storageKey = null;
-let wsConn = null;   // WebSocket al relay local (cross-device)
+let wsConn = null;         // WebSocket relay (serve.py local)
+let localPeer = null;      // PeerJS local peer
+let peerRemoteConn = null; // remote→board DataConnection
+let peerBoardConns = [];   // board←remote DataConnections
+
+/* PeerJS — WebRTC P2P, funciona desde HTTPS sin servidor propio */
+function initPeer(code, role){
+  function setup(){
+    if(typeof Peer === 'undefined') return;
+    if(role === 'board'){
+      // El tablero escucha con un ID derivado del código
+      localPeer = new Peer('catan-' + code);
+      localPeer.on('connection', (conn)=>{
+        peerBoardConns.push(conn);
+        conn.on('data', (msg)=> handleSyncMessage(msg));
+        conn.on('open', ()=> setTimeout(()=> broadcastState(), 150));
+      });
+      localPeer.on('error', ()=>{});
+    } else {
+      // El remoto se conecta al ID del tablero
+      localPeer = new Peer();
+      localPeer.on('open', ()=>{
+        peerRemoteConn = localPeer.connect('catan-' + code);
+        peerRemoteConn.on('open', ()=>{
+          setTimeout(()=> sendAction({type:'remote-hello', deviceId:STATE.myDeviceId}), 250);
+        });
+        peerRemoteConn.on('data', (msg)=> handleSyncMessageRemote(msg));
+        peerRemoteConn.on('error', ()=>{});
+      });
+      localPeer.on('error', ()=>{});
+    }
+  }
+  if(typeof Peer !== 'undefined'){
+    setup();
+  } else {
+    // Cargar PeerJS dinámicamente desde CDN
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+    s.onload = setup;
+    s.onerror = ()=>{};
+    document.head.appendChild(s);
+  }
+}
+
+function peerSend(msg){
+  // Enviar a todos los remotos conectados (board side) o al board (remote side)
+  if(localPeer === null) return;
+  if(peerRemoteConn && peerRemoteConn.open){
+    try{ peerRemoteConn.send(msg); }catch(e){}
+  }
+  peerBoardConns = peerBoardConns.filter(c=> c.open);
+  peerBoardConns.forEach(c=>{ try{ c.send(msg); }catch(e){} });
+}
 
 function initSyncBoard(){
   // El tablero es el "host". Crea un código y abre un canal.
@@ -3076,6 +3128,7 @@ function initSyncBoard(){
     }
   };
   initWebSocket(STATE.pairCode, 'board');
+  initPeer(STATE.pairCode, 'board');
 }
 
 function initSyncRemote(code){
@@ -3106,6 +3159,7 @@ function initSyncRemote(code){
     }catch(e){}
   }, 200);
   initWebSocket(code, 'remote');
+  initPeer(code, 'remote');
 }
 
 function initWebSocket(code, role){
@@ -3142,6 +3196,7 @@ function broadcastState(){
   const snap = makeSnapshot();
   const msg = {type:'state', payload:snap};
   if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(msg));
+  peerSend(msg);
   if(bcastChannel) bcastChannel.postMessage(msg);
   try{ localStorage.setItem(storageKey, JSON.stringify(snap)); }catch(e){}
   saveLocal();
@@ -3232,6 +3287,8 @@ function sendAction(action){
   const msg = {type:'action', payload:action};
   if(wsConn && wsConn.readyState===WebSocket.OPEN){
     wsConn.send(JSON.stringify(msg));
+  } else if(peerRemoteConn && peerRemoteConn.open){
+    try{ peerRemoteConn.send(msg); }catch(e){}
   } else if(bcastChannel){
     bcastChannel.postMessage(msg);
   }
@@ -3249,6 +3306,7 @@ function handleRemoteAction(action){
       // Confirmar al cliente cuál es su id
       const asgMsg = {type:'assign', payload:{deviceId:action.deviceId, playerId:free.id}};
       if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(asgMsg));
+      peerSend(asgMsg);
       if(bcastChannel) bcastChannel.postMessage(asgMsg);
     }
     return;
