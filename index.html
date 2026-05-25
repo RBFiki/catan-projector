@@ -3111,6 +3111,7 @@ function peerSend(msg){
 }
 
 function initSyncBoard(){
+  if(STATE.pairCode) return;  // ya inicializado, no regenerar código
   // El tablero es el "host". Crea un código y abre un canal.
   STATE.pairCode = Math.floor(100000+Math.random()*900000).toString();
   storageKey = 'catan-sync-' + STATE.pairCode;
@@ -3265,7 +3266,12 @@ function applySnapshot(snap){
   // Si soy remote, asegurarme de tener mi player asignado
   if(STATE.appMode==='remote' && !STATE.myPlayerId){
     const me = STATE.players.find(p=>p.deviceId===STATE.myDeviceId);
-    if(me) STATE.myPlayerId = me.id;
+    if(me){
+      STATE.myPlayerId = me.id;
+    } else if(STATE.players && STATE.players.length > 0){
+      // Hay jugadores pero ninguno tiene mi deviceId → reenviar hello
+      sendAction({type:'remote-hello', deviceId: STATE.myDeviceId});
+    }
   }
 
   renderAll();
