@@ -3052,11 +3052,11 @@ function renderProjectorScoreboard(){
   });
 }
 
-/* =============== MÓDULO 16: SINCRONIZACIÓN (BroadcastChannel) ================ */
+/* =============== MÓDULO 16: SINCRONIZACIÓN (BroadcastChannel + WebSocket) ===== */
 let bcastChannel = null;
 let pairChannel = null;
 let storageKey = null;
-let wsConn = null;
+let wsConn = null;   // WebSocket al relay local (cross-device)
 
 function initSyncBoard(){
   // El tablero es el "host". Crea un código y abre un canal.
