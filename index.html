@@ -412,14 +412,16 @@ body.board.projector #projectorScoreboard{display:flex}
 .modal{
   position:fixed;inset:0;z-index:500;display:grid;place-items:center;
   background:radial-gradient(circle at center, rgba(12,17,23,0.95), rgba(7,9,13,0.98));
-  backdrop-filter:blur(10px);padding:20px;
+  backdrop-filter:blur(10px);padding:16px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .modal.hidden{display:none}
 .modal-card{
-  width:min(580px, 100%);max-height:90vh;overflow-y:auto;
-  border:1px solid var(--line-strong);border-radius:14px;padding:32px;
+  width:min(580px, 100%);max-height:calc(100vh - 40px);overflow-y:auto;
+  border:1px solid var(--line-strong);border-radius:14px;padding:24px;
   background:linear-gradient(180deg, rgba(20,26,35,0.95), rgba(12,17,23,0.95));
   box-shadow:0 40px 100px rgba(0,0,0,0.7), 0 0 60px rgba(217,180,106,0.08);
+  touch-action:pan-y;
 }
 .modal-card h1{
   font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;
@@ -465,7 +467,7 @@ body.board.projector #projectorScoreboard{display:flex}
 }
 .psr-rm:hover{color:var(--red);background:rgba(192,57,43,0.1)}
 
-.btn-block{display:block;width:100%;padding:12px;font-size:13px;margin-top:8px}
+.btn-block{display:block;width:100%;padding:14px;font-size:14px;margin-top:8px;touch-action:manipulation;min-height:48px}
 
 /* ===========================================================
    6. MODO CONTROL REMOTO (celular)
@@ -549,20 +551,31 @@ body.remote{font-size:14px}
 .res-card.brick{background:linear-gradient(160deg,#3a1208,#1e0804)}
 .res-card.empty{opacity:.28;filter:grayscale(0.7)}
 
-/* Cartas de desarrollo */
-.dev-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}
+/* Cartas de desarrollo — lista de botones grandes en remoto */
+.dev-cards{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .dev-card{
-  aspect-ratio:0.7;border-radius:6px;background:linear-gradient(180deg, #4a3520, #2a1f12);
-  border:1.5px solid var(--gold);color:var(--gold-soft);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-family:'Cormorant Garamond',serif;font-size:10px;text-align:center;padding:4px;
-  cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 12px;border-radius:8px;
+  background:var(--bg-1);border:1px solid var(--line);
+  color:var(--ink);font-size:13px;text-align:left;
+  width:100%;touch-action:manipulation;
+  transition:opacity .15s;
 }
-.dev-card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(217,180,106,0.3)}
-.dev-card.qty-0{opacity:.25;cursor:not-allowed}
-.dev-card.playable{cursor:pointer;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 4px 12px rgba(217,180,106,0.35);animation:pulse-gold 2.2s ease-in-out infinite}
-.dev-card .dn{font-size:9px;line-height:1.1;margin-top:4px}
-.dev-card .dq{font-size:18px;font-weight:700;line-height:1}
+.dev-card .dc-left{display:flex;align-items:center;gap:8px}
+.dev-card .dc-qty{
+  font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;
+  color:var(--gold-soft);min-width:22px;text-align:center;
+}
+.dev-card .dc-name{font-size:12px;color:var(--ink)}
+.dev-card.qty-0{opacity:.28;pointer-events:none}
+.dev-card.playable{border-color:rgba(217,180,106,0.5);background:linear-gradient(180deg,rgba(217,180,106,0.08),rgba(217,180,106,0.02));animation:pulse-gold 2.2s ease-in-out infinite}
+.dev-card .dc-btn{
+  padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;
+  background:linear-gradient(180deg,var(--gold),#b8923f);color:#1a140a;border:none;
+  touch-action:manipulation;flex-shrink:0;
+}
+.dev-card.new-card{opacity:.45;border-style:dashed}
+.dev-card.new-card .dc-name{color:var(--ink-dim)}
 
 /* Acciones */
 .r-actions{padding:0 14px 14px}
@@ -573,7 +586,7 @@ body.remote{font-size:14px}
   border:1px solid var(--line);color:var(--ink);
   display:flex;align-items:center;justify-content:center;gap:8px;
   font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600;
-  transition:all .2s;
+  transition:all .2s;touch-action:manipulation;min-height:52px;
 }
 .action-btn:active{transform:scale(0.97)}
 .action-btn.primary{
@@ -3542,27 +3555,59 @@ function renderRemote(){
   // Cartas desarrollo
   const dev = document.getElementById('rDevCards');
   const devCounts = {knight:0, vp:0, road:0, plenty:0, monopoly:0};
-  me.devCards.forEach(c=> devCounts[c]++);
+  me.devCards.forEach(c=>{ if(devCounts[c]!==undefined) devCounts[c]++; });
+  const newCounts = {knight:0, vp:0, road:0, plenty:0, monopoly:0};
+  (me.devCardsBoughtThisTurn||[]).forEach(c=>{ if(newCounts[c]!==undefined) newCounts[c]++; });
   dev.innerHTML = '';
-  const devNames = {knight:'Guardian', vp:'Punto Victoria', road:'2 Corredores', plenty:'Suministro', monopoly:'Asalto Pirata'};
+  const devEmoji = {knight:'🛡', vp:'🏆', road:'🚀', plenty:'⚡', monopoly:'👾'};
+  const devNames = {knight:'Guardian', vp:'Pto. Victoria', road:'2 Corredores', plenty:'Suministro', monopoly:'Asalto Pirata'};
   const canPlayDev = isMyTurn && !STATE.devCardPlayedThisTurn && !inPlacement && !inTrade;
+
+  // Mostrar VP como info
+  if(devCounts.vp > 0){
+    const row = document.createElement('div');
+    row.className = 'dev-card';
+    row.innerHTML = `<div class="dc-left"><span class="dc-qty">${devCounts.vp}</span><span class="dc-name">🏆 Pto. Victoria</span></div><span style="font-size:10px;color:var(--gold-soft)">Auto +${devCounts.vp}VP</span>`;
+    dev.appendChild(row);
+  }
+
+  // Cartas jugables
   ['knight','road','plenty','monopoly'].forEach(k=>{
     const q = devCounts[k];
     const playable = q > 0 && canPlayDev && (k==='knight'
       ? (STATE.phase==='main'||STATE.phase==='rolling')
       : STATE.phase==='main');
-    const card = document.createElement('div');
-    card.className = 'dev-card qty-'+(q>0?'n':'0')+(playable?' playable':'');
-    card.title = playable ? 'Toca para jugar' : '';
-    card.innerHTML = `<div class="dq">${q}</div><div class="dn">${devNames[k]}</div>`;
-    if(playable){
-      card.onclick = ()=>{
-        if(k==='plenty'||k==='monopoly') openDevCardModal(k);
-        else sendAction({type:'play-dev', cardType:k, deviceId:STATE.myDeviceId, opts:{}});
-      };
-    }
-    dev.appendChild(card);
+    if(q === 0 && !playable) return; // no mostrar vacías
+    const row = document.createElement('div');
+    row.className = 'dev-card' + (q===0?' qty-0':'') + (playable?' playable':'');
+    const btn = document.createElement('button');
+    btn.className = 'dc-btn';
+    btn.textContent = 'Jugar';
+    btn.disabled = !playable;
+    btn.style.opacity = playable ? '1' : '0';
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(k==='plenty'||k==='monopoly') openDevCardModal(k);
+      else sendAction({type:'play-dev', cardType:k, deviceId:STATE.myDeviceId, opts:{}});
+    });
+    row.innerHTML = `<div class="dc-left"><span class="dc-qty">${q}</span><span class="dc-name">${devEmoji[k]} ${devNames[k]}</span></div>`;
+    row.appendChild(btn);
+    dev.appendChild(row);
   });
+
+  // Cartas compradas este turno (no jugables aún)
+  ['knight','road','plenty','monopoly','vp'].forEach(k=>{
+    const q = newCounts[k];
+    if(!q) return;
+    const row = document.createElement('div');
+    row.className = 'dev-card new-card';
+    row.innerHTML = `<div class="dc-left"><span class="dc-qty">${q}</span><span class="dc-name">${devEmoji[k]||'📡'} ${devNames[k]||k}</span></div><span style="font-size:10px;color:var(--ink-dim)">Próximo turno</span>`;
+    dev.appendChild(row);
+  });
+
+  if(dev.children.length === 0){
+    dev.innerHTML = '<div style="font-size:11px;color:var(--ink-dim);padding:6px 0">Sin cartas de tecnología</div>';
+  }
 
   // Botones (habilitar/deshabilitar)
   const canRoll = isMyTurn && (STATE.phase==='rolling' || (STATE.phase==='main' && !STATE.lastRoll));
