@@ -797,6 +797,34 @@ body.remote .toast-item{
 }
 .l-kofi-card:hover{background:linear-gradient(135deg,rgba(251,146,60,0.20) 0%,rgba(234,88,12,0.13) 100%);box-shadow:0 4px 24px rgba(251,146,60,0.18)}
 .l-kofi-card:active{transform:scale(0.98)}
+/* VP Selector (setup modal) */
+.vp-selector{display:flex;gap:8px;margin-bottom:18px}
+.vp-btn{
+  flex:1;padding:12px 8px;border-radius:10px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  color:rgba(255,255,255,0.55);cursor:pointer;font-family:inherit;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  transition:all 0.15s;-webkit-tap-highlight-color:transparent;
+}
+.vp-btn .vp-n{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#fff;line-height:1}
+.vp-btn .vp-label{font-size:10px;letter-spacing:0.8px;text-transform:uppercase;color:inherit}
+.vp-btn.selected{border-color:rgba(217,180,106,0.6);background:rgba(217,180,106,0.1)}
+.vp-btn.selected .vp-n{color:var(--gold)}
+.vp-btn.selected .vp-label{color:var(--gold-soft)}
+/* Game timer in topbar */
+#gameTimerDisplay{
+  font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;
+  color:rgba(255,255,255,0.5);letter-spacing:2px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  border-radius:8px;padding:5px 12px;display:none;white-space:nowrap;
+}
+/* Winner popup modal */
+#winnerModal .modal-card{text-align:center}
+.winner-stats{display:flex;gap:0;justify-content:center;margin:20px 0 8px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden}
+.winner-stat{flex:1;padding:14px 8px;border-right:1px solid rgba(255,255,255,0.07)}
+.winner-stat:last-child{border-right:none}
+.winner-stat-n{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:4px}
+.winner-stat-l{font-size:10px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.6px}
 </style>
 </head>
 <body class="board">
@@ -845,10 +873,41 @@ body.remote .toast-item{
       </div>
     </div>
 
+    <h2>4. Puntos de Victoria</h2>
+    <div class="vp-selector" id="vpSelector">
+      <button class="vp-btn" data-vp="8">
+        <div class="vp-n">8</div>
+        <div class="vp-label">Rápida</div>
+      </button>
+      <button class="vp-btn selected" data-vp="10">
+        <div class="vp-n">10</div>
+        <div class="vp-label">Estándar</div>
+      </button>
+      <button class="vp-btn" data-vp="12">
+        <div class="vp-n">12</div>
+        <div class="vp-label">Épica</div>
+      </button>
+    </div>
+
     <button class="btn primary btn-block" id="btnStartGame">Empezar Partida</button>
     <div style="text-align:center;margin-top:10px">
       <button class="btn" id="btnOnlyBoard" style="font-size:11px">Modo Demo · Solo Tablero (sin jugadores)</button>
     </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL GANADOR
+============================================================ -->
+<div id="winnerModal" class="modal hidden" style="z-index:800">
+  <div class="modal-card" style="max-width:380px">
+    <div style="font-size:56px;line-height:1;margin-bottom:8px">🏆</div>
+    <h1 id="winnerName" style="margin:0 0 6px;font-size:30px;line-height:1.1">—</h1>
+    <div class="tag" id="winnerTag" style="margin-bottom:0">Ganador</div>
+    <div class="winner-stats" id="winnerStats" style="margin-top:20px"></div>
+    <div id="winnerTime" style="font-size:12px;color:var(--ink-dim);margin:8px 0 20px;letter-spacing:0.5px"></div>
+    <button class="btn primary btn-block" id="btnWinnerNewGame" style="font-size:15px;padding:16px">🚀 Nueva Partida</button>
+    <button class="btn btn-block" id="btnWinnerBoard" style="margin-top:8px;font-size:13px">Seguir viendo el tablero</button>
   </div>
 </div>
 
@@ -1062,6 +1121,8 @@ body.remote .toast-item{
         <div class="brand-sub">Conquista el Cosmos</div>
       </div>
     </div>
+
+    <div id="gameTimerDisplay">00:00</div>
 
     <div class="top-actions">
       <button class="btn" id="btnHome" title="Volver al inicio">
@@ -1289,7 +1350,7 @@ body.remote .toast-item{
         <div class="me-dot" id="rMeDot"></div>
         <div class="me-info">
           <div class="me-name" id="rMeName">—</div>
-          <div class="me-vp"><span id="rMeVP">0</span> Puntos</div>
+          <div class="me-vp"><span id="rMeVP">0</span>/<span id="rTargetVP">10</span> <span style="font-size:10px;opacity:0.7">PV</span></div>
         </div>
       </div>
       <div class="conn-status" id="rConnStatus">conectado</div>
@@ -1695,6 +1756,13 @@ const STATE = {
   rolls: [],
   log: [],
 
+  /* Victoria */
+  targetVP: 10,              // puntos necesarios para ganar (8 / 10 / 12)
+
+  /* Timer */
+  gameStartTime: null,       // Date.now() cuando arranca la partida
+  gameDuration: null,        // segundos totales al terminar
+
   /* Pairing */
   pairCode: null,
   myDeviceId: null,
@@ -1839,6 +1907,7 @@ function highlightHexProduction(hex){
 function startGame(opts){
   STATE.gameMode = opts.gameMode;
   STATE.gameType = opts.gameType;
+  STATE.targetVP = opts.targetVP || 10;
   STATE.players = opts.players.map((p,i)=>({
     id:'p'+i,
     color:p.color, name:p.name,
@@ -1868,6 +1937,9 @@ function startGame(opts){
   const desert = STATE.hexes.find(h=>h.terrain==='desert');
   if(desert) STATE.robberHex = hexKey(desert.q, desert.r);
 
+  STATE.gameStartTime = Date.now();
+  STATE.gameDuration = null;
+  startGameTimer();
   logEvent('🚀 ¡Partida iniciada! · Fase de colonización espacial', '#d9b46a');
   renderAll();
   broadcastState();
@@ -2359,6 +2431,85 @@ function recalcLongestRoad(){
   });
 }
 
+/* ============================================================
+   TIMER DE SESIÓN
+============================================================ */
+let _gameTimerInterval = null;
+
+function formatDuration(seconds){
+  if(seconds < 3600){
+    const mm = Math.floor(seconds/60).toString().padStart(2,'0');
+    const ss = (seconds%60).toString().padStart(2,'0');
+    return `${mm}:${ss}`;
+  }
+  const h = Math.floor(seconds/3600);
+  const mm = Math.floor((seconds%3600)/60).toString().padStart(2,'0');
+  const ss = (seconds%60).toString().padStart(2,'0');
+  return `${h}:${mm}:${ss}`;
+}
+
+function startGameTimer(){
+  if(_gameTimerInterval) clearInterval(_gameTimerInterval);
+  const el = document.getElementById('gameTimerDisplay');
+  if(el){ el.style.display='block'; el.textContent='00:00'; }
+  _gameTimerInterval = setInterval(()=>{
+    if(!STATE.gameStartTime) return;
+    const elapsed = Math.floor((Date.now()-STATE.gameStartTime)/1000);
+    const el2 = document.getElementById('gameTimerDisplay');
+    if(el2) el2.textContent = formatDuration(elapsed);
+  }, 1000);
+}
+
+function stopGameTimer(){
+  if(_gameTimerInterval){ clearInterval(_gameTimerInterval); _gameTimerInterval=null; }
+  if(STATE.gameStartTime && !STATE.gameDuration){
+    STATE.gameDuration = Math.floor((Date.now()-STATE.gameStartTime)/1000);
+  }
+}
+
+/* ============================================================
+   POPUP GANADOR
+============================================================ */
+function showWinnerPopup(winner, totalVP){
+  const modal = document.getElementById('winnerModal');
+  if(!modal) return;
+  const hex = (PLAYER_COLORS[winner.color]||{}).hex || '#d9b46a';
+
+  document.getElementById('winnerName').textContent = winner.name;
+  document.getElementById('winnerName').style.color = hex;
+
+  const tag = document.getElementById('winnerTag');
+  tag.textContent = `${totalVP} Puntos de Victoria · ¡GANADOR!`;
+  tag.style.cssText += `;background:${hex}22;color:${hex};border-color:${hex}55`;
+
+  const stats = document.getElementById('winnerStats');
+  const items = [
+    { n: winner.settlements?.length||0, l:'Bases 🛸' },
+    { n: winner.cities?.length||0,      l:'Metrópolis 🌌' },
+    { n: winner.knightsPlayed||0,        l:'Guardianes 🛡' },
+    { n: winner.longestRoad||0,          l:'Corredores 🚀' },
+  ];
+  stats.innerHTML = items.map(s=>`
+    <div class="winner-stat">
+      <div class="winner-stat-n" style="color:${hex}">${s.n}</div>
+      <div class="winner-stat-l">${s.l}</div>
+    </div>`).join('');
+
+  const dur = STATE.gameDuration || (STATE.gameStartTime ? Math.floor((Date.now()-STATE.gameStartTime)/1000) : 0);
+  const timeEl = document.getElementById('winnerTime');
+  timeEl.textContent = dur > 0 ? `⏱ Duración de la partida: ${formatDuration(dur)}` : '';
+
+  modal.classList.remove('hidden');
+
+  document.getElementById('btnWinnerNewGame').onclick = ()=>{
+    modal.classList.add('hidden');
+    _doGoHome();
+  };
+  document.getElementById('btnWinnerBoard').onclick = ()=>{
+    modal.classList.add('hidden');
+  };
+}
+
 function checkVictory(){
   // Premios: longest road (>=5), largest army (>=3)
   let longestRoadHolder = null, lrLen = 4;
@@ -2375,13 +2526,15 @@ function checkVictory(){
   });
 
   // Verificar victoria
+  const target = STATE.targetVP || 10;
   for(const p of STATE.players){
     const total = p.vp + p._lrBonus + p._laBonus;
-    if(total>=10){
+    if(total >= target){
       STATE.phase = 'gameover';
+      stopGameTimer();
       logEvent(`🏆 ¡${p.name} GANA con ${total} puntos!`, p.color);
-      toast(`¡${p.name} gana la partida!`);
       broadcastState();
+      if(STATE.appMode === 'board') showWinnerPopup(p, total);
       return;
     }
   }
@@ -3156,7 +3309,10 @@ function renderPlayersList(){
           ${p.connected?'<div style="position:absolute;right:-2px;bottom:-2px;width:7px;height:7px;border-radius:50%;background:var(--green-ok);border:1.5px solid var(--bg-1)"></div>':''}
         </div>
         <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${p.name}${p.isBot?`<span style="font-size:9px;color:rgba(255,255,255,0.35);margin-left:4px">${{easy:'😴',medium:'🤖',hard:'💀'}[p.botDifficulty||'medium']}</span>`:''}</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold-soft);font-weight:600">${totalVP}<span style="font-size:9px;color:var(--ink-dim);margin-left:2px">PV</span></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold-soft);font-weight:600">${totalVP}<span style="font-size:9px;color:var(--ink-dim);margin-left:2px">/${STATE.targetVP||10}</span></div>
+      </div>
+      <div style="height:3px;background:rgba(255,255,255,0.07);border-radius:2px;margin-bottom:7px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(100,Math.round((totalVP/(STATE.targetVP||10))*100))}%;background:${PLAYER_COLORS[p.color].hex};border-radius:2px;transition:width 0.4s ease"></div>
       </div>
     `;
 
@@ -3540,6 +3696,8 @@ function renderRemote(){
   document.getElementById('rMeName').textContent = me.name;
   const totalVP = me.vp + (me._lrBonus||0) + (me._laBonus||0);
   document.getElementById('rMeVP').textContent = totalVP;
+  const tgt = document.getElementById('rTargetVP');
+  if(tgt) tgt.textContent = STATE.targetVP||10;
 
   // Turn banner
   const current = STATE.players[STATE.currentPlayerIdx];
@@ -4432,18 +4590,24 @@ function renderProjectorScoreboard(){
   if(!wrap) return;
   if(!STATE.players || !STATE.players.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML = '';
+  const target = STATE.targetVP || 10;
   STATE.players.forEach((p,idx)=>{
     const isActive = idx===STATE.currentPlayerIdx;
     const totalVP = p.vp + (p._lrBonus||0) + (p._laBonus||0);
     const totalRes = Object.values(p.resources).reduce((a,b)=>a+b,0);
     const totalDev = (p.devCards||[]).length + (p.devCardsBoughtThisTurn||[]).length;
+    const pct = Math.min(100, Math.round((totalVP/target)*100));
+    const hex = PLAYER_COLORS[p.color].hex;
     const div = document.createElement('div');
     div.className = 'proj-player' + (isActive?' active':'');
     div.innerHTML = `
       <div class="pp-head">
-        <div class="pp-dot" style="background:${PLAYER_COLORS[p.color].hex}"></div>
+        <div class="pp-dot" style="background:${hex}"></div>
         <div class="pp-name">${p.name}</div>
-        <div class="pp-vp">${totalVP}<span style="font-size:8px;color:var(--ink-dim);margin-left:2px">PV</span></div>
+        <div class="pp-vp">${totalVP}<span style="font-size:8px;color:var(--ink-dim);margin-left:2px">/${target}</span></div>
+      </div>
+      <div style="height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin:4px 0 6px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${hex};border-radius:2px;transition:width 0.4s ease"></div>
       </div>
       <div class="pp-res">
         ${Object.entries(RESOURCE_INFO).map(([k,info])=>{
@@ -4663,7 +4827,10 @@ function makeSnapshot(){
     discardQueue: STATE.discardQueue || {},
     robberVictims: STATE.robberVictims || [],
     rolls: STATE.rolls.slice(0,20),
-    log: STATE.log.slice(0,40)
+    log: STATE.log.slice(0,40),
+    targetVP: STATE.targetVP || 10,
+    gameStartTime: STATE.gameStartTime || null,
+    gameDuration: STATE.gameDuration || null
   };
 }
 
@@ -4694,6 +4861,9 @@ function applySnapshot(snap){
   STATE.robberVictims = snap.robberVictims || [];
   STATE.rolls = snap.rolls || [];
   STATE.log = snap.log || [];
+  STATE.targetVP = snap.targetVP || 10;
+  STATE.gameStartTime = snap.gameStartTime || null;
+  STATE.gameDuration = snap.gameDuration || null;
 
   // Reconstruir vertices/edges localmente
   const ve = buildVertexEdgeMap(STATE.hexes, STATE.size);
@@ -4715,6 +4885,32 @@ function applySnapshot(snap){
   }
 
   renderAll();
+
+  // Mostrar ganador en modo remote al recibir gameover
+  if(STATE.appMode === 'remote' && STATE.phase === 'gameover'){
+    const target = STATE.targetVP || 10;
+    const winner = STATE.players.reduce((best, p)=>{
+      const vp = p.vp + (p._lrBonus||0) + (p._laBonus||0);
+      const bvp = best.vp + (best._lrBonus||0) + (best._laBonus||0);
+      return vp > bvp ? p : best;
+    }, STATE.players[0]);
+    if(winner && !document.getElementById('remoteWinnerBanner')){
+      const totalVP = winner.vp + (winner._lrBonus||0) + (winner._laBonus||0);
+      const hex = (PLAYER_COLORS[winner.color]||{}).hex || '#d9b46a';
+      const dur = STATE.gameDuration || 0;
+      const banner = document.createElement('div');
+      banner.id = 'remoteWinnerBanner';
+      banner.style.cssText = `position:fixed;inset:0;z-index:900;background:#050810;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center`;
+      banner.innerHTML = `
+        <div style="font-size:64px;line-height:1;margin-bottom:12px">🏆</div>
+        <div style="font-size:28px;font-weight:700;color:${hex};margin-bottom:6px">${winner.name}</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:4px">${totalVP} Puntos de Victoria · ¡Ganador!</div>
+        ${dur>0?`<div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:28px">⏱ ${formatDuration(dur)}</div>`:'<div style="margin-bottom:28px"></div>'}
+        <div style="font-size:13px;color:rgba(255,255,255,0.4)">La partida ha terminado</div>
+      `;
+      document.body.appendChild(banner);
+    }
+  }
 }
 
 function handleSyncMessage(msg){
@@ -7703,6 +7899,7 @@ function clearRelayUrl(){
 const SETUP = {
   gameMode: 'base',
   gameType: 'full',
+  targetVP: 10,
   players: [
     {color:'red',    name:'Tú',        isBot:false, botDifficulty:'medium'},
     {color:'blue',   name:'Bot Azul',  isBot:true,  botDifficulty:'medium'},
@@ -7810,6 +8007,13 @@ function bindBoardEvents(){
       SETUP.gameType = c.dataset.gametype;
     };
   });
+  document.querySelectorAll('#vpSelector .vp-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('#vpSelector .vp-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      SETUP.targetVP = parseInt(btn.dataset.vp, 10);
+    };
+  });
   document.getElementById('btnAddPlayer').onclick = ()=>{
     const max = SETUP.gameMode==='ext'?6:4;
     if(SETUP.players.length>=max){toast('Máximo '+max+' jugadores',true); return;}
@@ -7829,7 +8033,7 @@ function bindBoardEvents(){
   document.getElementById('btnStartGame').onclick = ()=>{
     document.getElementById('startModal').classList.add('hidden');
     initSyncBoard();
-    startGame({gameMode:SETUP.gameMode, gameType:SETUP.gameType, players:SETUP.players});
+    startGame({gameMode:SETUP.gameMode, gameType:SETUP.gameType, players:SETUP.players, targetVP:SETUP.targetVP||10});
   };
   document.getElementById('btnOnlyBoard').onclick = ()=>{
     document.getElementById('startModal').classList.add('hidden');
@@ -8090,6 +8294,13 @@ function goHome(){
 }
 
 function _doGoHome(){
+  // Stop timer
+  stopGameTimer();
+  const timerEl = document.getElementById('gameTimerDisplay');
+  if(timerEl){ timerEl.style.display='none'; timerEl.textContent='00:00'; }
+  // Close winner modal if open
+  document.getElementById('winnerModal')?.classList.add('hidden');
+  document.getElementById('remoteWinnerBanner')?.remove();
   // Stop bots
   _cancelBot();
   _cancelBotTrade();
