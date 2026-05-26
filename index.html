@@ -2358,6 +2358,7 @@ function acceptTrade(acceptorId){
   proposer.resources[pt.want.res] = (proposer.resources[pt.want.res]||0) + pt.want.qty;
   logEvent(`Intercambio: ${proposer.name} da ${pt.give.qty} ${RESOURCE_INFO[pt.give.res].name} · ${acceptor.name} da ${pt.want.qty} ${RESOURCE_INFO[pt.want.res].name}`, proposer.color);
   STATE.pendingTrade = null;
+  _cancelBotTrade(); // limpiar timer de respuesta de bots
   renderAll();
   broadcastState();
 }
@@ -2365,6 +2366,7 @@ function acceptTrade(acceptorId){
 function cancelTrade(){
   if(!STATE.pendingTrade) return;
   STATE.pendingTrade = null;
+  _cancelBotTrade(); // limpiar timer de respuesta de bots
   renderAll();
   broadcastState();
 }
@@ -3701,25 +3703,63 @@ function renderPendingTradeBoard(){
   const pt = STATE.pendingTrade;
   if(!pt){ section.style.display = 'none'; return; }
   section.style.display = '';
+
   const proposer = STATE.players.find(p=>p.id===pt.proposerId);
   const gi = RESOURCE_INFO[pt.give.res], wi = RESOURCE_INFO[pt.want.res];
+  const pColor = proposer ? PLAYER_COLORS[proposer.color].hex : '#fff';
+
+  // Separar elegibles en humanos y bots
   const eligible = STATE.players.filter(p=>p.id!==pt.proposerId && (p.resources[pt.want.res]||0)>=pt.want.qty);
-  let html = `<div style="font-size:12px;margin-bottom:10px">
-    <span style="color:${proposer?PLAYER_COLORS[proposer.color].hex:'#fff'}">${proposer?proposer.name:'?'}</span>
-    ofrece <strong>${pt.give.qty} ${gi.emoji} ${gi.name}</strong><br>
-    a cambio de <strong>${pt.want.qty} ${wi.emoji} ${wi.name}</strong>
-  </div>`;
-  if(eligible.length){
-    html += `<div style="font-size:11px;color:var(--ink-dim);margin-bottom:6px">Pueden aceptar:</div>`;
-    eligible.forEach(p=>{
-      html += `<button class="btn btn-block" style="margin-bottom:6px;font-size:11px" onclick="acceptTrade('${p.id}')">
-        Acepta <span style="color:${PLAYER_COLORS[p.color].hex}">${p.name}</span>
-      </button>`;
-    });
+  const humanEligible = eligible.filter(p=>!p.isBot && !p.deviceId);
+  const botEligible   = eligible.filter(p=>p.isBot);
+  const waiting       = _botTradeTimer !== null; // bots aún decidiendo
+
+  let html = `
+    <div style="background:rgba(217,180,106,0.08);border:1px solid rgba(217,180,106,0.25);border-radius:8px;padding:10px;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--ink-dim);margin-bottom:4px">Oferta de intercambio:</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span style="color:${pColor};font-weight:600">${proposer?proposer.name:'?'}</span>
+        <span>da</span>
+        <span style="font-weight:600">${pt.give.qty} ${gi.emoji} ${gi.name}</span>
+        <span>↔</span>
+        <span style="font-weight:600">${pt.want.qty} ${wi.emoji} ${wi.name}</span>
+      </div>
+    </div>`;
+
+  if(eligible.length === 0){
+    html += `<div style="font-size:11px;color:var(--ink-dim);text-align:center;padding:6px 0">
+      Ningún jugador tiene suficiente ${wi.emoji} ${wi.name}
+    </div>`;
   } else {
-    html += `<div style="font-size:11px;color:var(--ink-dim)">Ningún jugador tiene suficiente ${wi.emoji} ${wi.name}</div>`;
+    // Humanos (pueden aceptar manualmente)
+    if(humanEligible.length){
+      html += `<div style="font-size:11px;color:var(--ink-dim);margin-bottom:6px">Humanos que pueden aceptar:</div>`;
+      humanEligible.forEach(p=>{
+        html += `<button class="btn btn-block" style="margin-bottom:6px;font-size:12px;border-left:3px solid ${PLAYER_COLORS[p.color].hex}"
+          onclick="acceptTrade('${p.id}')">
+          ✅ Acepta <span style="color:${PLAYER_COLORS[p.color].hex};font-weight:600">${p.name}</span>
+        </button>`;
+      });
+    }
+    // Bots (aceptan automáticamente, pero también se puede forzar)
+    if(botEligible.length){
+      if(waiting){
+        html += `<div style="font-size:11px;color:var(--gold-soft);text-align:center;padding:6px 0;animation:pulse 1s infinite">
+          ⏳ Los bots están decidiendo…
+        </div>`;
+      } else {
+        html += `<div style="font-size:11px;color:var(--ink-dim);margin-bottom:6px">Bots elegibles:</div>`;
+        botEligible.forEach(p=>{
+          html += `<button class="btn btn-block" style="margin-bottom:6px;font-size:12px;border-left:3px solid ${PLAYER_COLORS[p.color].hex}"
+            onclick="acceptTrade('${p.id}')">
+            🤖 Acepta <span style="color:${PLAYER_COLORS[p.color].hex};font-weight:600">${p.name}</span>
+          </button>`;
+        });
+      }
+    }
   }
-  html += `<button class="btn btn-block" style="margin-top:8px;font-size:11px" onclick="cancelTrade()">Cancelar oferta</button>`;
+
+  html += `<button class="btn btn-block" style="margin-top:8px;font-size:11px;border-color:rgba(239,68,68,0.4);color:rgba(239,68,68,0.8)" onclick="cancelTrade()">✕ Cancelar oferta</button>`;
   content.innerHTML = html;
 }
 
@@ -3862,13 +3902,53 @@ function autoDiscardBest(playerId, n){
 }
 
 /* =============== MÓDULO 14B: BOT AI ================ */
-// Timer de acción
+// Timer de acción principal (turno del bot)
 let _botTimer = null;
 function _schedBot(fn, ms=850){
   if(_botTimer) return;
   _botTimer = setTimeout(()=>{ _botTimer=null; fn(); }, ms);
 }
 function _cancelBot(){ if(_botTimer){ clearTimeout(_botTimer); _botTimer=null; } }
+
+// Timer separado para respuesta de bots a ofertas de comercio
+let _botTradeTimer = null;
+function _cancelBotTrade(){ if(_botTradeTimer){ clearTimeout(_botTradeTimer); _botTradeTimer=null; } }
+
+// ¿Acepta un bot una oferta de comercio?
+function _botWantsTrade(bot, trade){
+  const diff = bot.botDifficulty || 'medium';
+  // Desde perspectiva del bot (aceptante):
+  //   bot da: trade.want.res × trade.want.qty
+  //   bot recibe: trade.give.res × trade.give.qty
+  const giveRes = trade.want.res;
+  const giveQty = trade.want.qty;
+  const getRes  = trade.give.res;
+  const getQty  = trade.give.qty;
+  const botRes  = bot.resources;
+  const haveToGive   = botRes[giveRes] || 0;
+  const haveOfGet    = botRes[getRes]  || 0;
+  if(haveToGive < giveQty) return false; // comprobación de seguridad
+
+  if(diff === 'easy'){
+    return Math.random() < 0.6; // 60% de aceptar si puede pagar
+  }
+
+  // Heurísticas para medium/hard:
+  // 1. ¿Tenemos excedente cómodo de lo que damos?
+  const bankRate    = getBestTradeRate(bot, giveRes);
+  const hasSurplus  = haveToGive >= giveQty + 2;
+  // 2. ¿Necesitamos lo que recibimos?
+  const needsGet    = haveOfGet < 3;
+  // 3. ¿La ratio es mejor que ir al banco?
+  const ratio       = giveQty / getQty;            // p.ej. 2/1=2.0, 1/1=1.0
+  const betterThanBank = ratio < bankRate;          // p.ej. dar 2 es mejor que dar 4 al banco
+
+  if(diff === 'medium'){
+    return (hasSurplus || betterThanBank) && needsGet && ratio <= 2;
+  }
+  // hard: más exigente
+  return hasSurplus && needsGet && ratio <= 1.5;
+}
 
 // Probabilidad de un número (pips estándar de Catan)
 function _pips(n){ return n ? Math.max(0, 6-Math.abs(7-n)) : 0; }
@@ -4081,6 +4161,42 @@ function checkBotTurn(){
       });
     }, 600);
     return;
+  }
+
+  // ── RESPUESTA DE BOTS A OFERTAS DE COMERCIO ENTRE JUGADORES ──────────
+  // Cuando hay una oferta pendiente, los bots no-proponentes deciden si aceptan.
+  // Esto ocurre incluso cuando el turno actual es de un humano.
+  if(STATE.pendingTrade && STATE.phase==='main' && !_botTradeTimer){
+    const pt = STATE.pendingTrade;
+    // Bots elegibles: no son el proponente y tienen suficiente del recurso pedido
+    const eligible = STATE.players.filter(p=>
+      p.isBot &&
+      p.id !== pt.proposerId &&
+      (p.resources[pt.want.res]||0) >= pt.want.qty
+    );
+    if(eligible.length){
+      _botTradeTimer = setTimeout(()=>{
+        _botTradeTimer = null;
+        if(!STATE.pendingTrade) return; // ya fue cancelada/aceptada
+        const pt2 = STATE.pendingTrade;
+        // Re-verificar elegibilidad (pudo cambiar)
+        const stillEligible = eligible.filter(b=>{
+          const bb = STATE.players.find(p=>p.id===b.id);
+          return bb && (bb.resources[pt2.want.res]||0) >= pt2.want.qty;
+        });
+        // Encontrar el primer bot dispuesto a aceptar
+        const acceptor = stillEligible.find(b=>_botWantsTrade(b, pt2));
+        if(acceptor){
+          logEvent(`${acceptor.name} acepta la oferta`, acceptor.color);
+          acceptTrade(acceptor.id);
+        } else {
+          // Ningún bot quiso aceptar → log informativo, la oferta queda activa para humanos
+          logEvent(`Los bots rechazaron la oferta`, 'gray');
+          renderAll();
+          broadcastState();
+        }
+      }, 1400); // pequeña pausa para que se vea la oferta
+    }
   }
 
   const player=STATE.players[STATE.currentPlayerIdx];
@@ -7712,6 +7828,7 @@ function goHome(){
 function _doGoHome(){
   // Stop bots
   _cancelBot();
+  _cancelBotTrade();
   // Clear saved game
   try{ localStorage.removeItem('catan_projector_v2'); }catch(e){}
   // Close WebSocket / BroadcastChannels
