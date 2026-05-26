@@ -1008,6 +1008,10 @@ body.remote .toast-item{
     </div>
 
     <div class="top-actions">
+      <button class="btn" id="btnHome" title="Volver al inicio">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Inicio
+      </button>
       <button class="btn" id="btnPair" title="Conectar celulares">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="18" r="1"/></svg>
         Celulares
@@ -1018,7 +1022,7 @@ body.remote .toast-item{
       </button>
       <button class="btn primary" id="btnProjector">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="16" cy="12" r="3"/></svg>
-        Modo Proyector
+        Proyector
       </button>
     </div>
   </header>
@@ -7083,6 +7087,7 @@ function bindBoardEvents(){
   };
 
   // Top bar
+  document.getElementById('btnHome').onclick = goHome;
   document.getElementById('btnPair').onclick = openPairModal;
   document.getElementById('btnFullscreen').onclick = toggleFullscreen;
   document.getElementById('btnProjector').onclick = toggleProjectorMode;
@@ -7276,9 +7281,72 @@ function startBoardMode(){
   }
 }
 
+function goHome(){
+  // If a real game is running, confirm first
+  const inGame = STATE.phase && STATE.phase !== 'lobby' && STATE.phase !== 'gameover'
+               && STATE.players && STATE.players.length > 0;
+  if(inGame){
+    // Inline confirm banner instead of browser confirm() (blocked in some browsers)
+    const existing = document.getElementById('homeConfirmBanner');
+    if(existing){ existing.remove(); return; }
+    const banner = document.createElement('div');
+    banner.id = 'homeConfirmBanner';
+    banner.style.cssText = [
+      'position:fixed','top:64px','left:50%','transform:translateX(-50%)',
+      'z-index:700','background:#1a1010','border:1px solid rgba(239,68,68,0.5)',
+      'border-radius:10px','padding:14px 18px','display:flex','align-items:center',
+      'gap:12px','box-shadow:0 8px 32px rgba(0,0,0,0.6)','white-space:nowrap'
+    ].join(';');
+    banner.innerHTML = `
+      <span style="font-size:13px;color:rgba(255,255,255,0.85)">¿Salir de la partida actual?</span>
+      <button id="homeConfirmYes" style="padding:6px 14px;border-radius:6px;border:none;background:#dc2626;color:#fff;cursor:pointer;font-size:12px;font-weight:600">Sí, salir</button>
+      <button id="homeConfirmNo"  style="padding:6px 14px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);cursor:pointer;font-size:12px">Cancelar</button>
+    `;
+    document.body.appendChild(banner);
+    document.getElementById('homeConfirmYes').onclick = ()=>{ banner.remove(); _doGoHome(); };
+    document.getElementById('homeConfirmNo').onclick  = ()=>{ banner.remove(); };
+    // Auto-dismiss after 6s
+    setTimeout(()=>{ banner?.remove(); }, 6000);
+    return;
+  }
+  _doGoHome();
+}
+
+function _doGoHome(){
+  // Stop bots
+  _cancelBot();
+  // Clear saved game
+  try{ localStorage.removeItem('catan_projector_v2'); }catch(e){}
+  // Close WebSocket / BroadcastChannels
+  if(wsConn){ try{ wsConn.close(); }catch(e){} wsConn=null; }
+  if(bcastChannel){ try{ bcastChannel.close(); }catch(e){} bcastChannel=null; }
+  if(pairChannel){ try{ pairChannel.close(); }catch(e){} pairChannel=null; }
+  // Reset relevant STATE fields (keep device id and relay url)
+  const keepDeviceId  = STATE.myDeviceId;
+  const keepRelayUrl  = STATE.wsRelayUrl;
+  const keepPairCode  = null; // force fresh code on next game
+  Object.assign(STATE, {
+    phase:'lobby', players:[], hexes:[], vertices:new Map(), edges:new Map(),
+    ports:[], currentPlayerIdx:0, lastRoll:null, discardQueue:{},
+    pendingAction:null, pendingTrade:null, robberHex:null, robberVictims:[],
+    devDeck:[], devCardPlayedThisTurn:false, devRoadsLeft:0,
+    log:[], pairCode:keepPairCode, myPlayerId:null,
+    myDeviceId:keepDeviceId, wsRelayUrl:keepRelayUrl,
+    startingPhase:1, startingPlacementsLeft:0, startingOrder:[],
+    startingPlacedThisTurn:{settlement:false,road:false,lastVertex:null},
+  });
+  // Re-show landing
+  showLanding();
+}
+
 function showLanding(){
   const landing = document.getElementById('landing');
   landing.style.display = 'flex';
+  // Clear board visuals so old game doesn't bleed through
+  const boardSVGEl = document.getElementById('board');
+  if(boardSVGEl) boardSVGEl.innerHTML = '';
+  document.getElementById('playersList')?.replaceChildren();
+  document.getElementById('startModal')?.classList.remove('hidden');
 
   // Mostrar estado del relay en el landing
   const relayUrl = STATE.wsRelayUrl || localStorage.getItem('catanWsRelay') || '';
