@@ -7443,18 +7443,8 @@ function startBoardMode(){
   document.getElementById('seedInput').value = STATE.seed;
   renderPlayerSetup();
   applyVisualSettings();
-  // Conectar relay primero (puede recibir restore si hay partida en curso)
+  // Conectar relay (por si hay partida multijugador en curso vía WebSocket)
   initSyncBoard();
-  // Cargar estado local si existe
-  if(loadLocal() && STATE.players && STATE.players.length){
-    document.getElementById('startModal')?.classList.add('hidden');
-    STATE.size = STATE.gameMode==='ext'?HEX_SIZE_EXT:HEX_SIZE_BASE;
-    const ve = buildVertexEdgeMap(STATE.hexes, STATE.size);
-    STATE.vertices = ve.vertices;
-    STATE.edges = ve.edges;
-    if(!STATE.ports || !STATE.ports.length) assignPorts();
-    renderAll();
-  }
 }
 
 function goHome(){
@@ -7586,6 +7576,10 @@ function init(){
     localStorage.setItem('catan-device-id', STATE.myDeviceId);
   }
 
+  // Limpiar partida guardada: cada vez que se abre/recarga la pestaña
+  // se empieza desde cero (no se restaura estado anterior)
+  try{ localStorage.removeItem('catan_projector_v2'); }catch(e){}
+
   const remoteCode = detectAppMode();
 
   if(STATE.appMode==='remote'){
@@ -7603,26 +7597,8 @@ function init(){
     return;
   }
 
-  // Modo tablero: ¿hay partida guardada?
-  const hasSaved = (() => {
-    try{
-      const raw = localStorage.getItem('catan_projector_v2');
-      if(!raw) return false;
-      const d = JSON.parse(raw);
-      return d && d.players && d.players.length > 0;
-    }catch(e){ return false; }
-  })();
-
-  const urlParams = new URLSearchParams(location.search);
-  const forceBoard = urlParams.get('board') === '1';
-
-  if(hasSaved || forceBoard){
-    // Continuar partida guardada o ir directo al tablero
-    startBoardMode();
-  } else {
-    // Sesión fresca: mostrar landing
-    showLanding();
-  }
+  // Siempre arrancar desde el landing (sin restaurar partida previa)
+  showLanding();
 }
 
 window.addEventListener('DOMContentLoaded', init);
