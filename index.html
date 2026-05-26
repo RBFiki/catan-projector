@@ -3,13 +3,22 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover" />
-<title>Catan Projector Board · Edición Jugable</title>
+<title>Colonos — El juego de los colonizadores online</title>
+<meta name="description" content="Jugá a los colonizadores con tus amigos desde cualquier dispositivo. Tablero proyectable, control desde el celular, multijugador online.">
+<meta name="theme-color" content="#050810">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Colonos">
+<meta property="og:title" content="Colonos">
+<meta property="og:description" content="El juego de los colonizadores online · Control desde tu celular">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://rbfiki.github.io/catan-projector/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* =========================================================
-   CATAN PROJECTOR BOARD · EDICIÓN JUGABLE
+   COLONOS · Tablero Jugable
    Arquitectura:
    - Tablero principal (proyectado sobre la mesa)
    - Control remoto móvil (mismo HTML, modo "remote")
@@ -702,6 +711,48 @@ body.remote .toast-item{
   transform:translate(-50%,-50%);
   filter:drop-shadow(0 4px 10px rgba(0,0,0,0.6));
 }
+
+/* =====================================================
+   LANDING SCREEN — Colonos
+===================================================== */
+#landing{
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -5%, rgba(34,197,94,0.13) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 85%, rgba(251,191,36,0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 35% at 5% 80%,  rgba(99,102,241,0.08) 0%, transparent 50%),
+    #050810;
+}
+@keyframes hexFloat{
+  0%,100%{transform:translateY(0) rotate(0deg)}
+  50%{transform:translateY(-8px) rotate(1deg)}
+}
+@keyframes hexGlow{
+  0%,100%{filter:drop-shadow(0 6px 20px rgba(34,197,94,0.25))}
+  50%{filter:drop-shadow(0 10px 32px rgba(34,197,94,0.45))}
+}
+.l-logo-wrap{animation:hexFloat 4s ease-in-out infinite,hexGlow 4s ease-in-out infinite}
+.l-btn-create{
+  width:100%;padding:17px 20px;
+  background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);
+  border:none;border-radius:14px;color:#fff;
+  display:flex;align-items:center;gap:14px;cursor:pointer;
+  box-shadow:0 4px 24px rgba(22,163,74,0.35);
+  transition:transform 0.15s,box-shadow 0.15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.l-btn-create:active{transform:scale(0.97);box-shadow:0 2px 10px rgba(22,163,74,0.2)}
+.l-btn-join{
+  width:100%;padding:17px 20px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.11);border-radius:14px;color:#cbd5e1;
+  display:flex;align-items:center;gap:14px;cursor:pointer;
+  transition:background 0.15s;-webkit-tap-highlight-color:transparent;
+}
+.l-btn-join:active{background:rgba(255,255,255,0.08)}
+.l-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;
+}
 </style>
 </head>
 <body class="board">
@@ -711,7 +762,7 @@ body.remote .toast-item{
 ============================================================ -->
 <div id="startModal" class="modal board-only">
   <div class="modal-card">
-    <h1>Catan Projector</h1>
+    <h1>Colonos</h1>
     <div class="tag">Edición Jugable · Mesa Digital</div>
 
     <h2>1. Modo de Juego</h2>
@@ -783,7 +834,7 @@ body.remote .toast-item{
 <div id="remotePairModal" class="modal hidden">
   <div class="modal-card">
     <h1>Control Remoto</h1>
-    <div class="tag">Catan Projector</div>
+    <div class="tag">Colonos</div>
     <p style="text-align:center">Ingresa el código que aparece en la pantalla del tablero.</p>
 
     <div class="field">
@@ -841,65 +892,96 @@ body.remote .toast-item{
 </div>
 
 <!-- ============================================================
-     LANDING SCREEN (pantalla de inicio)
+     LANDING SCREEN — Colonos
 ============================================================ -->
-<div id="landing" style="display:none;position:fixed;inset:0;z-index:300;
-     background:var(--bg-0);flex-direction:column;align-items:center;
-     justify-content:center;padding:28px;gap:0;overflow:auto">
+<div id="landing" style="display:none;position:fixed;inset:0;z-index:300;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="min-height:100%;display:flex;flex-direction:column;align-items:center;
+              justify-content:center;padding:36px 24px 28px;gap:0">
 
-  <!-- Logo -->
-  <div style="text-align:center;margin-bottom:36px">
-    <svg viewBox="0 0 64 64" style="width:80px;height:80px;display:block;margin:0 auto 14px">
-      <polygon points="32,4 60,19 60,49 32,64 4,49 4,19"
-        fill="rgba(245,166,35,0.08)" stroke="#F5A623" stroke-width="1.5"/>
-      <polygon points="32,14 52,25 52,47 32,58 12,47 12,25"
-        fill="rgba(245,166,35,0.05)" stroke="rgba(245,166,35,0.35)" stroke-width="1"/>
-      <text x="32" y="40" text-anchor="middle" font-size="20"
-        font-family="serif" fill="#F5A623">⚑</text>
-    </svg>
-    <h1 style="font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:700;
-               color:var(--gold);letter-spacing:3px;margin:0;line-height:1">COLONOS</h1>
-    <p style="color:var(--ink-dim);font-size:13px;margin:8px 0 0;
-              font-family:'Inter Tight',sans-serif;letter-spacing:0.5px">
-      El juego de los colonizadores · en tu pantalla
+    <!-- Hex logo animado -->
+    <div class="l-logo-wrap" style="margin-bottom:26px">
+      <svg viewBox="0 0 120 120" width="108" height="108" aria-hidden="true">
+        <!-- Flor de 7 hexágonos con colores de recursos -->
+        <!-- Centro: trigo/gold -->
+        <polygon points="69,44.4 78,60 69,75.6 51,75.6 42,60 51,44.4" fill="#fbbf24" stroke="#050810" stroke-width="1.5"/>
+        <!-- Superior-derecha: bosque -->
+        <polygon points="84.6,17.4 93.6,33 84.6,48.6 66.6,48.6 57.6,33 66.6,17.4" fill="#16a34a" stroke="#050810" stroke-width="1.5"/>
+        <!-- Derecha: lana -->
+        <polygon points="100.2,44.4 109.2,60 100.2,75.6 82.2,75.6 73.2,60 82.2,44.4" fill="#22c55e" stroke="#050810" stroke-width="1.5"/>
+        <!-- Inferior-derecha: ladrillo -->
+        <polygon points="84.6,71.4 93.6,87 84.6,102.6 66.6,102.6 57.6,87 66.6,71.4" fill="#f97316" stroke="#050810" stroke-width="1.5"/>
+        <!-- Inferior-izquierda: mineral -->
+        <polygon points="53.4,71.4 62.4,87 53.4,102.6 35.4,102.6 26.4,87 35.4,71.4" fill="#94a3b8" stroke="#050810" stroke-width="1.5"/>
+        <!-- Izquierda: bosque oscuro -->
+        <polygon points="37.8,44.4 46.8,60 37.8,75.6 19.8,75.6 10.8,60 19.8,44.4" fill="#166534" stroke="#050810" stroke-width="1.5"/>
+        <!-- Superior-izquierda: trigo -->
+        <polygon points="53.4,17.4 62.4,33 53.4,48.6 35.4,48.6 26.4,33 35.4,17.4" fill="#fbbf24" stroke="#050810" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <!-- Título -->
+    <h1 style="font-family:'Inter Tight',sans-serif;font-size:48px;font-weight:700;
+               letter-spacing:-1.5px;line-height:1;margin:0 0 8px;
+               background:linear-gradient(135deg,#fff 0%,#86efac 45%,#fde68a 100%);
+               -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+               background-clip:text">COLONOS</h1>
+    <p style="color:#64748b;font-size:14px;font-weight:400;margin:0 0 32px;
+              letter-spacing:0.3px;font-family:'Inter Tight',sans-serif">
+      El juego de los colonizadores
     </p>
-  </div>
 
-  <!-- Botones de acción -->
-  <div style="display:flex;flex-direction:column;gap:14px;width:100%;max-width:320px">
-    <button id="landingBtnBoard" class="btn primary"
-      style="padding:18px 20px;font-size:15px;border-radius:12px;text-align:left;display:flex;
-             flex-direction:column;gap:3px;align-items:flex-start">
-      <span>🖥&nbsp; Proyectar Tablero</span>
-      <span style="font-size:11px;font-weight:400;opacity:0.75">
-        Abre el tablero en PC / TV y conecta celulares
+    <!-- Feature chips -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+                margin-bottom:32px;max-width:340px">
+      <span class="l-chip" style="background:rgba(34,197,94,0.1);color:#86efac;border:1px solid rgba(34,197,94,0.2)">
+        🌐 Online · cualquier red
       </span>
-    </button>
-    <button id="landingBtnJoin" class="btn"
-      style="padding:18px 20px;font-size:15px;border-radius:12px;text-align:left;display:flex;
-             flex-direction:column;gap:3px;align-items:flex-start">
-      <span>📱&nbsp; Unirse a Partida</span>
-      <span style="font-size:11px;font-weight:400;opacity:0.75">
-        Ingresa el código del tablero y controla tu turno
+      <span class="l-chip" style="background:rgba(99,102,241,0.1);color:#a5b4fc;border:1px solid rgba(99,102,241,0.2)">
+        📱 Control desde el celular
       </span>
-    </button>
-  </div>
+      <span class="l-chip" style="background:rgba(251,191,36,0.1);color:#fde68a;border:1px solid rgba(251,191,36,0.2)">
+        🎲 Reglas completas
+      </span>
+    </div>
 
-  <!-- Indicador relay -->
-  <div id="landingRelayStatus" style="margin-top:20px;font-size:11px;
-       color:var(--ink-dim);text-align:center;max-width:300px;line-height:1.5"></div>
+    <!-- CTAs -->
+    <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:330px;margin-bottom:24px">
+      <button id="landingBtnBoard" class="l-btn-create">
+        <span style="font-size:24px;flex-shrink:0">🖥</span>
+        <div style="text-align:left">
+          <div style="font-size:16px;font-weight:600;line-height:1.25">Crear Partida</div>
+          <div style="font-size:11px;font-weight:400;opacity:0.75;margin-top:2px">Proyectar tablero · conectar celulares</div>
+        </div>
+      </button>
+      <button id="landingBtnJoin" class="l-btn-join">
+        <span style="font-size:24px;flex-shrink:0">📱</span>
+        <div style="text-align:left">
+          <div style="font-size:16px;font-weight:500;line-height:1.25">Unirse a Partida</div>
+          <div style="font-size:11px;font-weight:400;opacity:0.55;margin-top:2px">Ingresá el código de 6 dígitos</div>
+        </div>
+      </button>
+    </div>
 
-  <!-- Footer -->
-  <div style="position:absolute;bottom:18px;left:0;right:0;text-align:center;
-              display:flex;align-items:center;justify-content:center;gap:16px">
-    <a href="https://ko-fi.com" target="_blank"
-       style="color:var(--ink-dim);font-size:11px;text-decoration:none;
-              display:flex;align-items:center;gap:4px">
-      ☕ Apoyar el proyecto
-    </a>
-    <span style="color:var(--line)">·</span>
-    <a href="https://github.com/RBFiki/catan-projector" target="_blank"
-       style="color:var(--ink-dim);font-size:11px;text-decoration:none">GitHub</a>
+    <!-- Relay status -->
+    <div id="landingRelayStatus" style="font-size:11px;color:#475569;text-align:center;
+         max-width:300px;line-height:1.7"></div>
+
+    <!-- Footer -->
+    <div style="margin-top:20px;display:flex;align-items:center;gap:18px">
+      <a href="https://ko-fi.com/rbfiki" target="_blank" rel="noopener"
+         style="color:#334155;font-size:11px;text-decoration:none;
+                display:flex;align-items:center;gap:4px;transition:color 0.15s"
+         onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#334155'">
+        ☕ Apoyar el proyecto
+      </a>
+      <span style="color:#1e293b;font-size:10px">·</span>
+      <a href="https://github.com/RBFiki/catan-projector" target="_blank" rel="noopener"
+         style="color:#334155;font-size:11px;text-decoration:none;transition:color 0.15s"
+         onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#334155'">
+        GitHub
+      </a>
+    </div>
+
   </div>
 </div>
 
@@ -917,7 +999,7 @@ body.remote .toast-item{
         </svg>
       </div>
       <div>
-        <div class="brand-name">Catan Projector</div>
+        <div class="brand-name">Colonos</div>
         <div class="brand-sub">Edición Jugable</div>
       </div>
     </div>
@@ -1222,7 +1304,7 @@ body.remote .toast-item{
 
 <script>
 /* =========================================================
-   CATAN PROJECTOR - LÓGICA PRINCIPAL
+   COLONOS - LÓGICA PRINCIPAL
    ========================================================= */
 
 /* =============== MÓDULO 0: UTILS ================ */
