@@ -841,6 +841,69 @@ body.remote .toast-item{
 </div>
 
 <!-- ============================================================
+     LANDING SCREEN (pantalla de inicio)
+============================================================ -->
+<div id="landing" style="display:none;position:fixed;inset:0;z-index:300;
+     background:var(--bg-0);flex-direction:column;align-items:center;
+     justify-content:center;padding:28px;gap:0;overflow:auto">
+
+  <!-- Logo -->
+  <div style="text-align:center;margin-bottom:36px">
+    <svg viewBox="0 0 64 64" style="width:80px;height:80px;display:block;margin:0 auto 14px">
+      <polygon points="32,4 60,19 60,49 32,64 4,49 4,19"
+        fill="rgba(245,166,35,0.08)" stroke="#F5A623" stroke-width="1.5"/>
+      <polygon points="32,14 52,25 52,47 32,58 12,47 12,25"
+        fill="rgba(245,166,35,0.05)" stroke="rgba(245,166,35,0.35)" stroke-width="1"/>
+      <text x="32" y="40" text-anchor="middle" font-size="20"
+        font-family="serif" fill="#F5A623">⚑</text>
+    </svg>
+    <h1 style="font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:700;
+               color:var(--gold);letter-spacing:3px;margin:0;line-height:1">COLONOS</h1>
+    <p style="color:var(--ink-dim);font-size:13px;margin:8px 0 0;
+              font-family:'Inter Tight',sans-serif;letter-spacing:0.5px">
+      El juego de los colonizadores · en tu pantalla
+    </p>
+  </div>
+
+  <!-- Botones de acción -->
+  <div style="display:flex;flex-direction:column;gap:14px;width:100%;max-width:320px">
+    <button id="landingBtnBoard" class="btn primary"
+      style="padding:18px 20px;font-size:15px;border-radius:12px;text-align:left;display:flex;
+             flex-direction:column;gap:3px;align-items:flex-start">
+      <span>🖥&nbsp; Proyectar Tablero</span>
+      <span style="font-size:11px;font-weight:400;opacity:0.75">
+        Abre el tablero en PC / TV y conecta celulares
+      </span>
+    </button>
+    <button id="landingBtnJoin" class="btn"
+      style="padding:18px 20px;font-size:15px;border-radius:12px;text-align:left;display:flex;
+             flex-direction:column;gap:3px;align-items:flex-start">
+      <span>📱&nbsp; Unirse a Partida</span>
+      <span style="font-size:11px;font-weight:400;opacity:0.75">
+        Ingresa el código del tablero y controla tu turno
+      </span>
+    </button>
+  </div>
+
+  <!-- Indicador relay -->
+  <div id="landingRelayStatus" style="margin-top:20px;font-size:11px;
+       color:var(--ink-dim);text-align:center;max-width:300px;line-height:1.5"></div>
+
+  <!-- Footer -->
+  <div style="position:absolute;bottom:18px;left:0;right:0;text-align:center;
+              display:flex;align-items:center;justify-content:center;gap:16px">
+    <a href="https://ko-fi.com" target="_blank"
+       style="color:var(--ink-dim);font-size:11px;text-decoration:none;
+              display:flex;align-items:center;gap:4px">
+      ☕ Apoyar el proyecto
+    </a>
+    <span style="color:var(--line)">·</span>
+    <a href="https://github.com/RBFiki/catan-projector" target="_blank"
+       style="color:var(--ink-dim);font-size:11px;text-decoration:none">GitHub</a>
+  </div>
+</div>
+
+<!-- ============================================================
      APP PRINCIPAL
 ============================================================ -->
 <div id="app">
@@ -3394,7 +3457,9 @@ function initWebSocket(code, role){
         if(role==='remote'){
           setTimeout(()=>sendAction({type:'remote-hello', deviceId:STATE.myDeviceId}), 400);
         } else {
-          setTimeout(()=>broadcastState(), 300);
+          // Solo hacer broadcast inicial si hay partida activa;
+          // si estamos en lobby, esperar el restore del relay sin sobreescribirlo.
+          setTimeout(()=>{ if(STATE.phase!=='lobby') broadcastState(); }, 300);
         }
       };
       ws.onmessage = (ev)=>{
@@ -3447,6 +3512,7 @@ function makeSnapshot(){
     lastRoll: STATE.lastRoll,
     robberHex: STATE.robberHex,
     devDeckSize: STATE.devDeck.length,
+    devDeck: STATE.devDeck,   // completo para reconexión del tablero
     discardQueue: STATE.discardQueue || {},
     robberVictims: STATE.robberVictims || [],
     rolls: STATE.rolls.slice(0,20),
@@ -3473,7 +3539,10 @@ function applySnapshot(snap){
   STATE.devRoadsLeft = snap.devRoadsLeft || 0;
   STATE.lastRoll = snap.lastRoll;
   STATE.robberHex = snap.robberHex;
-  STATE.devDeck = new Array(snap.devDeckSize || 0).fill('?');  // longitud correcta para botón comprar
+  // Si el snapshot trae el mazo completo (reconexión del tablero), usarlo tal cual
+  STATE.devDeck = (snap.devDeck && snap.devDeck.some(c=>c!=='?'))
+    ? snap.devDeck
+    : new Array(snap.devDeckSize || snap.devDeck?.length || 0).fill('?');
   STATE.discardQueue = snap.discardQueue || {};
   STATE.robberVictims = snap.robberVictims || [];
   STATE.rolls = snap.rolls || [];
@@ -3505,6 +3574,22 @@ function handleSyncMessage(msg){
   if(!msg) return;
   if(msg.type==='state'){
     applySnapshot(msg.payload);
+    return;
+  }
+  if(msg.type==='restore'){
+    // Relay envía estado guardado al reconectar.
+    // En el tablero: solo aplicar si no hay partida activa (lobby).
+    if(STATE.appMode==='board'){
+      if(STATE.phase==='lobby'){
+        applySnapshot(msg.payload);
+        document.getElementById('startModal')?.classList.add('hidden');
+      } else {
+        // Tablero ya tiene partida activa → ignorar y re-emitir estado propio
+        broadcastState();
+      }
+    } else {
+      applySnapshot(msg.payload);
+    }
     return;
   }
   if(msg.type==='action' && STATE.appMode==='board'){
@@ -3580,6 +3665,11 @@ function handleSyncMessageRemote(msg){
       toast('¡Conectado!');
       renderRemote();
     }
+    return;
+  }
+  // 'restore' en remote: tratar igual que 'state'
+  if(msg && msg.type==='restore'){
+    applySnapshot(msg.payload);
     return;
   }
   origHandle(msg);
@@ -6569,6 +6659,83 @@ function detectAppMode(){
   return null;
 }
 
+function startBoardMode(){
+  bindBoardEvents();
+  document.getElementById('seedInput').value = STATE.seed;
+  renderPlayerSetup();
+  applyVisualSettings();
+  // Conectar relay primero (puede recibir restore si hay partida en curso)
+  initSyncBoard();
+  // Cargar estado local si existe
+  if(loadLocal() && STATE.players && STATE.players.length){
+    document.getElementById('startModal')?.classList.add('hidden');
+    STATE.size = STATE.gameMode==='ext'?HEX_SIZE_EXT:HEX_SIZE_BASE;
+    const ve = buildVertexEdgeMap(STATE.hexes, STATE.size);
+    STATE.vertices = ve.vertices;
+    STATE.edges = ve.edges;
+    if(!STATE.ports || !STATE.ports.length) assignPorts();
+    renderAll();
+  }
+}
+
+function showLanding(){
+  const landing = document.getElementById('landing');
+  landing.style.display = 'flex';
+
+  // Mostrar estado del relay en el landing
+  const relayUrl = STATE.wsRelayUrl || localStorage.getItem('catanWsRelay') || '';
+  const relayEl = document.getElementById('landingRelayStatus');
+  if(relayEl){
+    relayEl.innerHTML = relayUrl
+      ? `<span style="color:#a8e7b8">⚡ Relay online:</span> <code style="font-size:10px">${relayUrl}</code>`
+      : `<span>Sin relay configurado — funciona en la misma red WiFi o
+         <a href="#" onclick="showLandingRelaySetup()" style="color:var(--gold-soft)">configura uno online</a></span>`;
+  }
+
+  document.getElementById('landingBtnBoard').onclick = ()=>{
+    landing.style.display = 'none';
+    startBoardMode();
+  };
+
+  document.getElementById('landingBtnJoin').onclick = ()=>{
+    landing.style.display = 'none';
+    STATE.appMode = 'remote';
+    document.body.classList.remove('board');
+    document.body.classList.add('remote');
+    bindRemoteEvents();
+    document.getElementById('remotePairModal').classList.remove('hidden');
+  };
+}
+
+function showLandingRelaySetup(){
+  // Re-usa el flujo de openPairModal mostrando solo la config de relay
+  const relayEl = document.getElementById('landingRelayStatus');
+  if(!relayEl) return;
+  const current = localStorage.getItem('catanWsRelay') || '';
+  relayEl.innerHTML = `
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <input id="landingRelayInput" type="text" placeholder="wss://tu-relay.onrender.com"
+        value="${current}"
+        style="flex:1;background:var(--bg-1);color:var(--ink);border:1px solid rgba(217,180,106,0.4);
+               padding:7px 9px;border-radius:6px;font-size:11px;font-family:'JetBrains Mono',monospace">
+      <button class="btn primary" onclick="saveLandingRelay()" style="font-size:11px;padding:7px 12px">OK</button>
+    </div>
+    <div style="font-size:10px;color:var(--ink-dim);margin-top:5px">
+      Despliega gratis en <a href="https://render.com" target="_blank" style="color:var(--gold-soft)">Render.com</a>
+      con el repo <code>RBFiki/catan-projector</code>
+    </div>`;
+}
+
+function saveLandingRelay(){
+  let url = (document.getElementById('landingRelayInput')?.value || '').trim();
+  if(!url) return;
+  if(url.startsWith('https://')) url = 'wss://' + url.slice(8);
+  else if(url.startsWith('http://'))  url = 'ws://'  + url.slice(7);
+  STATE.wsRelayUrl = url;
+  localStorage.setItem('catanWsRelay', url);
+  showLanding();
+}
+
 function init(){
   // Generar deviceId estable por dispositivo
   STATE.myDeviceId = localStorage.getItem('catan-device-id');
@@ -6580,10 +6747,9 @@ function init(){
   const remoteCode = detectAppMode();
 
   if(STATE.appMode==='remote'){
-    // Modo control remoto
+    // Modo control remoto (desde QR o link directo)
     bindRemoteEvents();
     if(remoteCode){
-      // Auto-conectar
       document.getElementById('remoteCodeInput').value = remoteCode;
       setTimeout(()=>{
         initSyncRemote(remoteCode);
@@ -6595,22 +6761,25 @@ function init(){
     return;
   }
 
-  // Modo board
-  bindBoardEvents();
-  document.getElementById('seedInput').value = STATE.seed;
-  renderPlayerSetup();
-  applyVisualSettings();
+  // Modo tablero: ¿hay partida guardada?
+  const hasSaved = (() => {
+    try{
+      const raw = localStorage.getItem('catan_projector_v2');
+      if(!raw) return false;
+      const d = JSON.parse(raw);
+      return d && d.players && d.players.length > 0;
+    }catch(e){ return false; }
+  })();
 
-  // Cargar estado guardado si existe
-  if(loadLocal() && STATE.players && STATE.players.length){
-    document.getElementById('startModal').classList.add('hidden');
-    STATE.size = STATE.gameMode==='ext'?HEX_SIZE_EXT:HEX_SIZE_BASE;
-    const ve = buildVertexEdgeMap(STATE.hexes, STATE.size);
-    STATE.vertices = ve.vertices;
-    STATE.edges = ve.edges;
-    if(!STATE.ports || !STATE.ports.length) assignPorts();
-    initSyncBoard();
-    renderAll();
+  const urlParams = new URLSearchParams(location.search);
+  const forceBoard = urlParams.get('board') === '1';
+
+  if(hasSaved || forceBoard){
+    // Continuar partida guardada o ir directo al tablero
+    startBoardMode();
+  } else {
+    // Sesión fresca: mostrar landing
+    showLanding();
   }
 }
 

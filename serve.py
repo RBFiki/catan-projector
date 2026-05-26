@@ -30,7 +30,8 @@ IS_CLOUD  = 'PORT' in os.environ          # Render / Railway / Fly inyectan PORT
 HTTP_PORT = 9080
 WS_PORT   = int(os.environ.get('PORT', 9765))
 
-rooms: dict = defaultdict(set)  # code → set of websocket connections
+rooms: dict       = defaultdict(set)  # code → set of websocket connections
+room_states: dict = {}                 # code → último {type:'state', payload:...} recibido
 
 
 def get_local_ip():
@@ -72,10 +73,19 @@ async def relay(ws):
                 rooms[room_code].add(ws)
                 n = len(rooms[room_code])
                 print(f"  join  room={room_code}  peers={n}", flush=True)
+                # Enviar estado guardado al recién conectado (como 'restore')
+                if room_code in room_states:
+                    restore_msg = dict(room_states[room_code])
+                    restore_msg["type"] = "restore"
+                    await ws.send(json.dumps(restore_msg))
                 continue
 
             if room_code is None:
                 continue
+
+            # Guardar el último snapshot de estado para reconexión
+            if msg.get("type") == "state":
+                room_states[room_code] = msg
 
             peers = [p for p in rooms[room_code] if p is not ws]
             if peers:
@@ -90,6 +100,7 @@ async def relay(ws):
             rooms[room_code].discard(ws)
             if not rooms[room_code]:
                 del rooms[room_code]
+                room_states.pop(room_code, None)  # limpiar estado cuando sala vacía
 
 
 async def main():
