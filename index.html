@@ -1179,8 +1179,17 @@ body.remote .toast-item{
           <span style="font-size:9px;opacity:.6">⛏🐑🌾</span>
         </button>
       </div>
-      <button class="btn" id="bBtnTrade" style="width:100%;font-size:12px;margin-bottom:4px">🏦 Comercio con banco</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <button class="btn" id="bBtnTrade" style="font-size:12px;padding:8px 6px">🏦 Banco</button>
+        <button class="btn" id="bBtnTradePlayer" style="font-size:12px;padding:8px 6px">🤝 Jugadores</button>
+      </div>
       <button class="btn" id="bBtnCancel" style="width:100%;font-size:12px;display:none;border-color:rgba(239,68,68,0.4);color:rgba(239,68,68,0.8)">✕ Cancelar colocación</button>
+    </div>
+
+    <!-- Cartas de desarrollo del jugador activo (juego local) -->
+    <div class="section" id="bDevCardsSection" style="display:none">
+      <div class="section-title">🎴 Cartas de Desarrollo</div>
+      <div id="bDevCardsList" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
 
     <div class="section">
@@ -3049,17 +3058,44 @@ function renderPlayersList(){
       </div>
     `;
 
-    // Resumen de cartas: solo totales para no revelar manos (privacidad)
-    const resBreakdown = `
-      <div style="display:flex;gap:8px;margin-bottom:6px;font-size:11px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
-        <span title="Recursos en mano">🎴 <b style="color:var(--ink)">${totalRes}</b></span>
-        <span title="Cartas de desarrollo">📜 <b style="color:var(--ink)">${totalDev}</b></span>
-        <span title="Caballeros jugados">⚔ <b style="color:var(--ink)">${p.knightsPlayed||0}</b></span>
-      </div>
-    `;
+    // En modo tablero: mostrar recursos reales (todos están en la misma pantalla)
+    let resBreakdown;
+    if(STATE.appMode === 'board'){
+      const resChips = Object.entries(p.resources)
+        .filter(([,q])=>q>0)
+        .map(([k,q])=>`<span title="${RESOURCE_INFO[k].name}" style="display:inline-flex;align-items:center;gap:2px;background:${RESOURCE_INFO[k].color}33;border:1px solid ${RESOURCE_INFO[k].color}66;border-radius:4px;padding:1px 5px;font-size:10px">${RESOURCE_INFO[k].emoji}<b style="color:var(--ink)">${q}</b></span>`).join('');
+      const devChips = (()=>{
+        const dc = {knight:0,vp:0,road:0,plenty:0,monopoly:0};
+        const dn = {knight:'⚔',vp:'🏆',road:'🛤',plenty:'🌾',monopoly:'🦹'};
+        [...(p.devCards||[]),...(p.devCardsBoughtThisTurn||[])].forEach(k=>{ if(dc[k]!==undefined) dc[k]++; });
+        return Object.entries(dc).filter(([,q])=>q>0)
+          .map(([k,q])=>`<span title="${k}" style="display:inline-flex;align-items:center;gap:2px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:4px;padding:1px 5px;font-size:10px">${dn[k]}<b style="color:var(--ink)">${q}</b></span>`).join('');
+      })();
+      resBreakdown = `
+        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">${resChips||'<span style="font-size:10px;color:var(--ink-dim)">Sin recursos</span>'}</div>
+        ${devChips?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">${devChips}</div>`:''}
+        <div style="display:flex;gap:8px;font-size:10px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
+          <span>⚔ ${p.knightsPlayed||0}</span>
+          <span>🛤 ${p.longestRoad||0}</span>
+          <span>🏠 ${(p.settlements||[]).length}</span>
+          <span>🏛 ${(p.cities||[]).length}</span>
+          ${p._lrBonus?'<span style="color:var(--gold-soft)">🛤+2</span>':''}
+          ${p._laBonus?'<span style="color:var(--gold-soft)">⚔+2</span>':''}
+        </div>
+      `;
+    } else {
+      // Modo remoto/proyector: solo totales (privacidad)
+      resBreakdown = `
+        <div style="display:flex;gap:8px;margin-bottom:6px;font-size:11px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
+          <span title="Recursos en mano">🎴 <b style="color:var(--ink)">${totalRes}</b></span>
+          <span title="Cartas de desarrollo">📜 <b style="color:var(--ink)">${totalDev}</b></span>
+          <span title="Caballeros jugados">⚔ <b style="color:var(--ink)">${p.knightsPlayed||0}</b></span>
+        </div>
+      `;
+    }
 
-    // Footer: construcciones
-    const footer = `
+    // Footer: construcciones (solo en modo remoto, en board ya están arriba)
+    const footer = STATE.appMode === 'board' ? '' : `
       <div style="display:flex;gap:8px;align-items:center;font-size:10px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
         <span title="Ruta más larga">🛤 ${p.longestRoad||0}</span>
         <span title="Asentamientos">🏠 ${(p.settlements||[]).length}</span>
@@ -3121,8 +3157,9 @@ function renderBoardActions(){
   const bCity    = document.getElementById('bBtnCity');
   const bRoad    = document.getElementById('bBtnRoad');
   const bDev     = document.getElementById('bBtnDev');
-  const bTrade   = document.getElementById('bBtnTrade');
-  const bCancel  = document.getElementById('bBtnCancel');
+  const bTrade        = document.getElementById('bBtnTrade');
+  const bTradePlayer  = document.getElementById('bBtnTradePlayer');
+  const bCancel       = document.getElementById('bBtnCancel');
 
   if(bSettle){
     const can = isMain && canAfford(me,COSTS.settlement) &&
@@ -3153,7 +3190,10 @@ function renderBoardActions(){
   if(bTrade){
     bTrade.disabled = !isMain;
     bTrade.style.opacity = isMain?'1':'0.4';
-    bTrade.style.display = STATE.phase==='main'?'':'none';
+  }
+  if(bTradePlayer){
+    bTradePlayer.disabled = !isMain || !!STATE.pendingTrade;
+    bTradePlayer.style.opacity = (isMain && !STATE.pendingTrade)?'1':'0.4';
   }
 
   // Cancel button — visible when a placement is pending
@@ -3162,10 +3202,10 @@ function renderBoardActions(){
     bCancel.style.display = cancellable ? '' : 'none';
   }
 
-  // Hide build grid in non-main phases
-  const buildGrid = document.querySelector('#boardActionsSection > div[style*="grid"]');
-  if(buildGrid) buildGrid.style.display = STATE.phase==='main' ? '' : 'none';
-  if(bTrade) bTrade.style.display = STATE.phase==='main' ? '' : 'none';
+  // Hide build buttons grid and trade buttons in non-main phases
+  document.querySelectorAll('#boardActionsSection > div[style*="grid"]').forEach(g=>{
+    g.style.display = STATE.phase==='main' ? '' : 'none';
+  });
 
   // Hint for non-main phases
   let hintEl = sec.querySelector('.bActHint');
@@ -3194,6 +3234,88 @@ function renderBoardActions(){
     hintEl.style.display='';
   } else {
     hintEl.style.display='none';
+  }
+}
+
+function renderBoardDevCards(){
+  const sec = document.getElementById('bDevCardsSection');
+  const list = document.getElementById('bDevCardsList');
+  if(!sec || !list) return;
+
+  const me = STATE.players[STATE.currentPlayerIdx];
+  // Only show for non-bot, non-remote players with dev cards
+  if(!me || me.isBot || me.deviceId || STATE.phase==='lobby' || STATE.phase==='gameover'){
+    sec.style.display='none'; return;
+  }
+
+  const allCards = [...(me.devCards||[])];
+  const newCards = [...(me.devCardsBoughtThisTurn||[])];
+  const totalCards = allCards.length + newCards.length + (allCards.filter(c=>c==='vp').length > 0 ? 0 : 0);
+
+  if(allCards.length === 0 && newCards.length === 0){
+    sec.style.display='none'; return;
+  }
+  sec.style.display='';
+
+  const inPlacement = STATE.pendingAction && STATE.pendingAction.playerId===me.id;
+  const canPlayDev = STATE.phase==='main' && !STATE.devCardPlayedThisTurn && !inPlacement && !STATE.pendingTrade;
+  const canKnight  = !STATE.devCardPlayedThisTurn && !inPlacement && !STATE.pendingTrade
+                      && (STATE.phase==='main'||STATE.phase==='rolling');
+
+  const devNames = {knight:'⚔ Caballero', vp:'🏆 Pto Victoria', road:'🛤 2 Carreteras', plenty:'🌾 Año de Cosecha', monopoly:'🦹 Monopolio'};
+
+  // Count playable types
+  const counts = {knight:0,vp:0,road:0,plenty:0,monopoly:0};
+  allCards.forEach(c=>{ if(counts[c]!==undefined) counts[c]++; });
+
+  list.innerHTML = '';
+
+  // Show VP cards (not playable, just info)
+  if(counts.vp > 0){
+    const row = document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:rgba(217,180,106,0.08);border:1px solid rgba(217,180,106,0.2);border-radius:6px';
+    row.innerHTML = `<span style="font-size:12px">${devNames.vp} ×${counts.vp}</span><span style="font-size:10px;color:var(--gold-soft)">Auto +${counts.vp}VP</span>`;
+    list.appendChild(row);
+  }
+
+  // Show playable cards
+  ['knight','road','plenty','monopoly'].forEach(k=>{
+    if(counts[k] === 0) return;
+    const canPlay = k === 'knight' ? canKnight : canPlayDev;
+    const row = document.createElement('div');
+    row.style.cssText=`display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:var(--bg-1);border:1px solid ${canPlay?'rgba(217,180,106,0.35)':'var(--line)'};border-radius:6px`;
+    const nameEl = document.createElement('span');
+    nameEl.style.cssText='font-size:12px;flex:1';
+    nameEl.textContent = `${devNames[k]} ×${counts[k]}`;
+    row.appendChild(nameEl);
+    const btn = document.createElement('button');
+    btn.className = 'btn' + (canPlay ? ' primary' : '');
+    btn.style.cssText='font-size:11px;padding:4px 10px';
+    btn.textContent = 'Jugar';
+    btn.disabled = !canPlay;
+    btn.onclick = ()=>{
+      if(k==='plenty'||k==='monopoly'){
+        openDevCardModal(k);
+      } else {
+        // knight and road: play directly
+        playDevCard(me.id, k, {});
+      }
+    };
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+
+  // Show newly-bought cards (can't play yet)
+  if(newCards.length > 0){
+    const newCounts = {knight:0,vp:0,road:0,plenty:0,monopoly:0};
+    newCards.forEach(c=>{ if(newCounts[c]!==undefined) newCounts[c]++; });
+    Object.entries(newCounts).forEach(([k,q])=>{
+      if(!q) return;
+      const row = document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:6px;opacity:0.6';
+      row.innerHTML = `<span style="font-size:12px">${devNames[k]||k} ×${q}</span><span style="font-size:10px;color:var(--ink-dim)">Siguiente turno</span>`;
+      list.appendChild(row);
+    });
   }
 }
 
@@ -3624,20 +3746,104 @@ function renderRobberBoard(){
     cnt.innerHTML = html;
   } else if(isDiscardPhase){
     sec.style.display = '';
-    let html = `<div style="font-size:12px;color:var(--ink-dim);margin-bottom:8px">Esperando descartes:</div>`;
-    Object.entries(STATE.discardQueue||{}).forEach(([pid, amt])=>{
+    // Find the first human (non-bot, non-remote) player who still needs to discard
+    const humanEntry = Object.entries(STATE.discardQueue||{})
+      .find(([pid])=>{ const pp=STATE.players.find(x=>x.id===pid); return pp && !pp.isBot && !pp.deviceId; });
+    if(humanEntry){
+      const [pid, amt] = humanEntry;
       const p = STATE.players.find(x=>x.id===pid);
-      if(!p) return;
-      html += `<div style="font-size:11px;margin-bottom:4px">
-        <span style="color:${PLAYER_COLORS[p.color].hex}">●</span> ${p.name}: descarta ${amt} cartas
-        <button style="float:right;font-size:10px;background:rgba(192,57,43,0.3);border:none;color:#fff;padding:1px 6px;border-radius:3px;cursor:pointer"
-          onclick="submitDiscard('${pid}',autoDiscardBest('${pid}',${amt}))">Auto</button>
+      // Build stepper UI for this human player
+      if(!cnt._discardPid || cnt._discardPid !== pid){
+        cnt._discardPid = pid;
+        cnt._discardSel = {};
+      }
+      const sel = cnt._discardSel;
+      let html = `<div style="font-size:12px;margin-bottom:10px">
+        <span style="color:${PLAYER_COLORS[p.color].hex};font-weight:600">${p.name}</span>
+        debe descartar <b>${amt}</b> cartas (7 o más en mano)
       </div>`;
-    });
-    cnt.innerHTML = html;
+      Object.entries(RESOURCE_INFO).forEach(([k,info])=>{
+        const have = p.resources[k]||0;
+        if(!have) return;
+        const chosen = sel[k]||0;
+        html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px 8px;background:var(--bg-1);border-radius:6px;border:1px solid var(--line)">
+          <div style="width:24px;height:24px;background:${info.color};border-radius:4px;display:grid;place-items:center;font-size:13px;flex:0 0 24px">${info.emoji}</div>
+          <div style="flex:1;font-size:12px">${info.name} <span style="color:var(--ink-dim)">(${have})</span></div>
+          <button onclick="(()=>{const s=document.getElementById('bDiscardCnt');s._s=s._s||{};s._s['${k}']=Math.max(0,(s._s['${k}']||0)-1);_refreshBoardDiscard(s)})()"
+            style="width:24px;height:24px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);border-radius:4px;color:#fff;cursor:pointer;font-size:14px;display:grid;place-items:center">−</button>
+          <span id="bDiscardAmt_${k}" style="font-family:'JetBrains Mono',monospace;font-size:13px;min-width:20px;text-align:center">${chosen}</span>
+          <button onclick="(()=>{const s=document.getElementById('bDiscardCnt');s._s=s._s||{};const mx=${have};s._s['${k}']=Math.min(mx,(s._s['${k}']||0)+1);_refreshBoardDiscard(s)})()"
+            style="width:24px;height:24px;background:rgba(34,197,94,0.2);border:1px solid rgba(34,197,94,0.3);border-radius:4px;color:#fff;cursor:pointer;font-size:14px;display:grid;place-items:center">+</button>
+        </div>`;
+      });
+      html += `<div id="bDiscardCnt" data-pid="${pid}" data-amt="${amt}" style="margin-top:8px">
+        <div id="bDiscardStatus" style="font-size:11px;text-align:center;color:var(--ink-dim);margin-bottom:6px">Selecciona ${amt} cartas</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="submitDiscard('${pid}',autoDiscardBest('${pid}',${amt}))" class="btn" style="flex:1;font-size:11px">⚡ Auto</button>
+          <button id="bDiscardConfirm" onclick="_confirmBoardDiscard()" class="btn primary" style="flex:2;font-size:11px" disabled>☠ Descartar</button>
+        </div>
+      </div>`;
+      cnt.innerHTML = html;
+      // Restore selections if any
+      const cntEl = document.getElementById('bDiscardCnt');
+      if(cntEl){ cntEl._s = {...sel}; }
+      _refreshBoardDiscard(cntEl);
+    } else {
+      // All remaining discards are bots or remote → show waiting message
+      let html = `<div style="font-size:12px;color:var(--ink-dim);margin-bottom:8px">Descartes pendientes:</div>`;
+      Object.entries(STATE.discardQueue||{}).forEach(([pid, amt])=>{
+        const p = STATE.players.find(x=>x.id===pid);
+        if(!p) return;
+        html += `<div style="font-size:11px;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
+          <span><span style="color:${PLAYER_COLORS[p.color].hex}">●</span> ${p.name}: −${amt}</span>
+          <button style="font-size:10px;background:rgba(192,57,43,0.3);border:1px solid rgba(192,57,43,0.4);color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer"
+            onclick="submitDiscard('${pid}',autoDiscardBest('${pid}',${amt}))">Auto</button>
+        </div>`;
+      });
+      cnt.innerHTML = html;
+    }
   } else {
     sec.style.display = 'none';
+    if(cnt) cnt._discardPid = null;
   }
+}
+
+function _refreshBoardDiscard(cntEl){
+  if(!cntEl) return;
+  const sel = cntEl._s || {};
+  const amt = +cntEl.dataset.amt;
+  const total = Object.values(sel).reduce((a,b)=>a+b,0);
+  // Update amount displays
+  Object.keys(RESOURCE_INFO).forEach(k=>{
+    const el = document.getElementById('bDiscardAmt_'+k);
+    if(el) el.textContent = sel[k]||0;
+  });
+  const status = document.getElementById('bDiscardStatus');
+  if(status){
+    const rem = amt - total;
+    status.textContent = rem > 0 ? `Faltan ${rem} cartas por seleccionar` : `✓ Listo para descartar`;
+    status.style.color = rem === 0 ? 'var(--green-ok)' : 'var(--ink-dim)';
+  }
+  const confirmBtn = document.getElementById('bDiscardConfirm');
+  if(confirmBtn){
+    confirmBtn.disabled = total !== amt;
+    confirmBtn.textContent = total === amt ? `☠ Descartar ${total} cartas` : `Selecciona ${amt-total} más`;
+  }
+  // Also sync to sec._discardSel so it persists through re-renders
+  const sec = document.getElementById('robberVictimContent');
+  if(sec){ sec._discardSel = {...sel}; }
+}
+
+function _confirmBoardDiscard(){
+  const cntEl = document.getElementById('bDiscardCnt');
+  if(!cntEl) return;
+  const pid = cntEl.dataset.pid;
+  const amt = +cntEl.dataset.amt;
+  const sel = cntEl._s || {};
+  const total = Object.values(sel).reduce((a,b)=>a+b,0);
+  if(total !== amt){ toast(`Selecciona exactamente ${amt} cartas`, true); return; }
+  const clean = Object.fromEntries(Object.entries(sel).filter(([,v])=>v>0));
+  submitDiscard(pid, clean);
 }
 
 function autoDiscardBest(playerId, n){
@@ -3943,6 +4149,7 @@ function renderAll(){
     renderPlayersList();
     renderTurnBanner();
     renderBoardActions();
+    renderBoardDevCards();
     renderRollHistory();
     renderPendingTradeBoard();
     renderRobberBoard();
@@ -6809,9 +7016,16 @@ function toast(msg, isError){
 
 /* =============== MÓDULO 21: COMERCIO UI ================ */
 function openTradeModal(){
-  const me = STATE.players.find(p=>p.id===STATE.myPlayerId);
+  // Board mode: use current active player; remote mode: use assigned player
+  const me = STATE.appMode === 'board'
+    ? STATE.players[STATE.currentPlayerIdx]
+    : STATE.players.find(p=>p.id===STATE.myPlayerId);
   if(!me) return;
+  if(STATE.phase !== 'main') return toast('Solo en fase principal', true);
+
   const body = document.getElementById('tradeBody');
+  const subtitle = document.getElementById('tradeSubtitle');
+  if(subtitle) subtitle.textContent = `${me.name} · tasas según tus puertos`;
   body.innerHTML = '<p style="text-align:center;color:var(--ink-dim);margin-bottom:14px">Comercio con el banco · tasas según tus puertos</p>';
   const grid = document.createElement('div');
   grid.style.display = 'grid';
@@ -6819,17 +7033,11 @@ function openTradeModal(){
   grid.style.gap = '10px';
   Object.entries(RESOURCE_INFO).forEach(([k,info])=>{
     const rate = getBestTradeRate(me, k);
-    const can = me.resources[k] >= rate;
+    const can = (me.resources[k]||0) >= rate;
     const rateLabel = rate===2 ? '2:1' : rate===3 ? '3:1' : '4:1';
     const rateColor = rate < 4 ? 'var(--gold-soft)' : 'var(--ink-dim)';
     const row = document.createElement('div');
-    row.style.display='flex';
-    row.style.alignItems='center';
-    row.style.gap='10px';
-    row.style.padding='10px';
-    row.style.background='var(--bg-1)';
-    row.style.borderRadius='8px';
-    row.style.border = rate < 4 ? '1px solid rgba(217,180,106,0.35)' : '1px solid var(--line)';
+    row.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg-1);border-radius:8px;border:${rate < 4 ? '1px solid rgba(217,180,106,0.35)' : '1px solid var(--line)'}`;
     row.innerHTML = `
       <div style="width:30px;height:30px;background:${info.color};border-radius:4px;display:grid;place-items:center;color:#fff;font-size:14px">${info.emoji}</div>
       <div style="flex:1">
@@ -6853,7 +7061,11 @@ function openTradeModal(){
       const give = btn.dataset.give;
       const sel = body.querySelector(`select[data-key="get-${give}"]`);
       const get = sel.value;
-      sendAction({type:'trade-bank', deviceId:STATE.myDeviceId, give, get});
+      if(STATE.appMode === 'board'){
+        tradeWithBank(me.id, give, get);
+      } else {
+        sendAction({type:'trade-bank', deviceId:STATE.myDeviceId, give, get});
+      }
       document.getElementById('tradeModal').classList.add('hidden');
     };
   });
@@ -6896,15 +7108,23 @@ function openDevCardModal(cardType){
     } else {
       opts = {res: document.getElementById('monopolyRes').value};
     }
-    sendAction({type:'play-dev', cardType, deviceId:STATE.myDeviceId, opts});
+    if(STATE.appMode === 'board'){
+      const me = STATE.players[STATE.currentPlayerIdx];
+      if(me) playDevCard(me.id, cardType, opts);
+    } else {
+      sendAction({type:'play-dev', cardType, deviceId:STATE.myDeviceId, opts});
+    }
     document.getElementById('devCardModal').classList.add('hidden');
   };
   document.getElementById('devCardModal').classList.remove('hidden');
 }
 
 function openPlayerTradeModal(){
-  const me = STATE.players.find(p=>p.id===STATE.myPlayerId);
+  const me = STATE.appMode === 'board'
+    ? STATE.players[STATE.currentPlayerIdx]
+    : STATE.players.find(p=>p.id===STATE.myPlayerId);
   if(!me) return;
+  if(STATE.phase !== 'main') return toast('Solo en fase principal', true);
 
   // Opciones de recursos: "ofrezco" muestra mis cantidades; "quiero" muestra solo nombre
   const giveOptions = Object.entries(RESOURCE_INFO)
@@ -7269,7 +7489,13 @@ function bindBoardEvents(){
     if(p && !p.isBot) requestBuild(p.id, 'dev');
   };
   document.getElementById('bBtnTrade').onclick = openTradeModal;
+  document.getElementById('bBtnTradePlayer').onclick = openPlayerTradeModal;
   document.getElementById('bBtnCancel').onclick = cancelPlacement;
+
+  // Modal close buttons (board mode)
+  document.getElementById('btnCloseTrade').onclick = ()=>{ document.getElementById('tradeModal').classList.add('hidden'); };
+  document.getElementById('btnCancelPlayerTrade').onclick = ()=>{ document.getElementById('playerTradeModal').classList.add('hidden'); };
+  document.getElementById('btnCancelDevCard').onclick = ()=>{ document.getElementById('devCardModal').classList.add('hidden'); };
 
   // Pair modal close
   document.getElementById('btnClosePair').onclick = ()=>{
@@ -7386,7 +7612,12 @@ function bindRemoteEvents(){
   document.getElementById('btnConfirmPlayerTrade').onclick = ()=>{
     const give = {res: document.getElementById('ptGiveRes').value, qty: +document.getElementById('ptGiveQty').value};
     const want = {res: document.getElementById('ptWantRes').value, qty: +document.getElementById('ptWantQty').value};
-    sendAction({type:'trade-propose', deviceId:STATE.myDeviceId, give, want});
+    if(STATE.appMode === 'board'){
+      const me = STATE.players[STATE.currentPlayerIdx];
+      if(me) proposeTrade(me.id, give, want);
+    } else {
+      sendAction({type:'trade-propose', deviceId:STATE.myDeviceId, give, want});
+    }
     document.getElementById('playerTradeModal').classList.add('hidden');
   };
   document.getElementById('btnCancelPlayerTrade').onclick = ()=>{
