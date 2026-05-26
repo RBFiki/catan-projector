@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover" />
-<title>Colonos — El juego de los colonizadores online</title>
-<meta name="description" content="Jugá a los colonizadores con tus amigos desde cualquier dispositivo. Tablero proyectable, control desde el celular, multijugador online.">
+<title>Colonos — Conquista el Cosmos</title>
+<meta name="description" content="Colonos: el juego de estrategia espacial online. Tablero proyectable, control desde el celular, multijugador.">
 <meta name="theme-color" content="#050810">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Colonos">
-<meta property="og:title" content="Colonos">
-<meta property="og:description" content="El juego de los colonizadores online · Control desde tu celular">
+<meta property="og:title" content="Colonos — Conquista el Cosmos">
+<meta property="og:description" content="Estrategia espacial online · Control desde tu celular">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://rbfiki.github.io/catan-projector/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41,20 +41,20 @@
   --green-ok:#27ae60;
   --shadow:0 20px 50px rgba(0,0,0,0.55);
 
-  --t-forest:#14532d;
-  --t-pasture:#166534;
-  --t-field:#a16207;
-  --t-mountain:#2d3f55;
-  --t-hill:#9a3412;
-  --t-desert:#c8a84b;
-  --t-sea:#071828;
+  --t-forest:#1a2438;
+  --t-pasture:#0d2b2b;
+  --t-field:#0a1a3a;
+  --t-mountain:#1a0a30;
+  --t-hill:#1f1a2e;
+  --t-desert:#111318;
+  --t-sea:#020408;
 
   /* Recursos -> colores de cartas */
-  --c-wood:#1f3d2a;
-  --c-wool:#7ab33a;
-  --c-wheat:#e8b830;
-  --c-ore:#8a96a3;
-  --c-brick:#c8642a;
+  --c-wood:#2a3550;
+  --c-wool:#0d3b38;
+  --c-wheat:#1a3060;
+  --c-ore:#2a1a4a;
+  --c-brick:#2e2542;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -905,32 +905,32 @@ body.remote .toast-item{
     <div class="l-logo-wrap" style="margin-bottom:26px">
       <svg viewBox="0 0 120 120" width="108" height="108" aria-hidden="true">
         <!-- Flor de 7 hexágonos con colores de recursos -->
-        <!-- Centro: trigo/gold -->
-        <polygon points="69,44.4 78,60 69,75.6 51,75.6 42,60 51,44.4" fill="#fbbf24" stroke="#050810" stroke-width="1.5"/>
-        <!-- Superior-derecha: bosque -->
-        <polygon points="84.6,17.4 93.6,33 84.6,48.6 66.6,48.6 57.6,33 66.6,17.4" fill="#16a34a" stroke="#050810" stroke-width="1.5"/>
-        <!-- Derecha: lana -->
-        <polygon points="100.2,44.4 109.2,60 100.2,75.6 82.2,75.6 73.2,60 82.2,44.4" fill="#22c55e" stroke="#050810" stroke-width="1.5"/>
-        <!-- Inferior-derecha: ladrillo -->
-        <polygon points="84.6,71.4 93.6,87 84.6,102.6 66.6,102.6 57.6,87 66.6,71.4" fill="#f97316" stroke="#050810" stroke-width="1.5"/>
-        <!-- Inferior-izquierda: mineral -->
-        <polygon points="53.4,71.4 62.4,87 53.4,102.6 35.4,102.6 26.4,87 35.4,71.4" fill="#94a3b8" stroke="#050810" stroke-width="1.5"/>
-        <!-- Izquierda: bosque oscuro -->
-        <polygon points="37.8,44.4 46.8,60 37.8,75.6 19.8,75.6 10.8,60 19.8,44.4" fill="#166534" stroke="#050810" stroke-width="1.5"/>
-        <!-- Superior-izquierda: trigo -->
-        <polygon points="53.4,17.4 62.4,33 53.4,48.6 35.4,48.6 26.4,33 35.4,17.4" fill="#fbbf24" stroke="#050810" stroke-width="1.5"/>
+        <!-- Centro: Energía/amarillo eléctrico -->
+        <polygon points="69,44.4 78,60 69,75.6 51,75.6 42,60 51,44.4" fill="#1a3060" stroke="#050810" stroke-width="1.5"/>
+        <!-- Superior-derecha: Titanio -->
+        <polygon points="84.6,17.4 93.6,33 84.6,48.6 66.6,48.6 57.6,33 66.6,17.4" fill="#1a2438" stroke="#050810" stroke-width="1.5"/>
+        <!-- Derecha: Biotech -->
+        <polygon points="100.2,44.4 109.2,60 100.2,75.6 82.2,75.6 73.2,60 82.2,44.4" fill="#0d2b2b" stroke="#050810" stroke-width="1.5"/>
+        <!-- Inferior-derecha: Nanomateriales -->
+        <polygon points="84.6,71.4 93.6,87 84.6,102.6 66.6,102.6 57.6,87 66.6,71.4" fill="#1f1a2e" stroke="#050810" stroke-width="1.5"/>
+        <!-- Inferior-izquierda: Cristales -->
+        <polygon points="53.4,71.4 62.4,87 53.4,102.6 35.4,102.6 26.4,87 35.4,71.4" fill="#1a0a30" stroke="#050810" stroke-width="1.5"/>
+        <!-- Izquierda: Titanio oscuro -->
+        <polygon points="37.8,44.4 46.8,60 37.8,75.6 19.8,75.6 10.8,60 19.8,44.4" fill="#0f1620" stroke="#050810" stroke-width="1.5"/>
+        <!-- Superior-izquierda: Energía -->
+        <polygon points="53.4,17.4 62.4,33 53.4,48.6 35.4,48.6 26.4,33 35.4,17.4" fill="#1a3060" stroke="#050810" stroke-width="1.5"/>
       </svg>
     </div>
 
     <!-- Título -->
     <h1 style="font-family:'Inter Tight',sans-serif;font-size:48px;font-weight:700;
                letter-spacing:-1.5px;line-height:1;margin:0 0 8px;
-               background:linear-gradient(135deg,#fff 0%,#86efac 45%,#fde68a 100%);
+               background:linear-gradient(135deg,#fff 0%,#a5b4fc 45%,#67e8f9 100%);
                -webkit-background-clip:text;-webkit-text-fill-color:transparent;
                background-clip:text">COLONOS</h1>
     <p style="color:#64748b;font-size:14px;font-weight:400;margin:0 0 32px;
               letter-spacing:0.3px;font-family:'Inter Tight',sans-serif">
-      El juego de los colonizadores
+      Conquista el Cosmos 🚀
     </p>
 
     <!-- Feature chips -->
@@ -1003,7 +1003,7 @@ body.remote .toast-item{
       </div>
       <div>
         <div class="brand-name">Colonos</div>
-        <div class="brand-sub">Edición Jugable</div>
+        <div class="brand-sub">Conquista el Cosmos</div>
       </div>
     </div>
 
@@ -1036,7 +1036,7 @@ body.remote .toast-item{
     </div>
 
     <div class="section" id="robberVictimSection" style="display:none">
-      <div class="section-title">☠ Ladrón</div>
+      <div class="section-title">👾 Space Pirate</div>
       <div id="robberVictimContent"></div>
     </div>
 
@@ -1163,20 +1163,20 @@ body.remote .toast-item{
       <!-- Botones de construcción -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
         <button class="btn" id="bBtnSettlement" style="flex-direction:column;gap:2px;padding:8px 6px;font-size:12px">
-          <span>🏠 Poblado</span>
-          <span style="font-size:9px;opacity:.6">🌲🧱🐑🌾</span>
+          <span>🛸 Base Lunar</span>
+          <span style="font-size:9px;opacity:.6">⚙️🧱🧬⚡</span>
         </button>
         <button class="btn" id="bBtnCity" style="flex-direction:column;gap:2px;padding:8px 6px;font-size:12px">
-          <span>🏙 Ciudad</span>
-          <span style="font-size:9px;opacity:.6">⛏⛏⛏🌾🌾</span>
+          <span>🌌 Metrópolis</span>
+          <span style="font-size:9px;opacity:.6">💎💎💎⚡⚡</span>
         </button>
         <button class="btn" id="bBtnRoad" style="flex-direction:column;gap:2px;padding:8px 6px;font-size:12px">
-          <span>🛤 Carretera</span>
-          <span style="font-size:9px;opacity:.6">🌲🧱</span>
+          <span>🚀 Corredor</span>
+          <span style="font-size:9px;opacity:.6">⚙️🧱</span>
         </button>
         <button class="btn" id="bBtnDev" style="flex-direction:column;gap:2px;padding:8px 6px;font-size:12px">
-          <span>📜 Carta Dev</span>
-          <span style="font-size:9px;opacity:.6">⛏🐑🌾</span>
+          <span>📡 Tecnología</span>
+          <span style="font-size:9px;opacity:.6">💎🧬⚡</span>
         </button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
@@ -1188,7 +1188,7 @@ body.remote .toast-item{
 
     <!-- Cartas de desarrollo del jugador activo (juego local) -->
     <div class="section" id="bDevCardsSection" style="display:none">
-      <div class="section-title">🎴 Cartas de Desarrollo</div>
+      <div class="section-title">📡 Tecnología Espacial</div>
       <div id="bDevCardsList" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
 
@@ -1258,7 +1258,7 @@ body.remote .toast-item{
       <div class="resource-row" id="rResources"></div>
 
       <div class="r-hand-title" style="margin-top:16px">
-        Cartas de Desarrollo
+        Tecnología Espacial
       </div>
       <div class="dev-cards" id="rDevCards"></div>
     </div>
@@ -1282,14 +1282,14 @@ body.remote .toast-item{
 
     <!-- Banner: descarte al sacar 7 -->
     <div class="trade-offer-banner" id="rDiscardBanner" style="display:none;border-color:rgba(192,57,43,0.5);background:rgba(192,57,43,0.08)">
-      <div class="tob-header" style="color:#ff8a80">☠ <span id="rDiscardLabel">Debes descartar cartas</span></div>
+      <div class="tob-header" style="color:#ff8a80">👾 <span id="rDiscardLabel">Debes descartar cartas</span></div>
       <div id="rDiscardBody" style="margin:8px 0"></div>
       <button class="action-btn primary" id="rBtnConfirmDiscard" style="background:rgba(192,57,43,0.6);width:100%">Descartar selección</button>
     </div>
 
-    <!-- Banner: elegir víctima del ladrón -->
+    <!-- Banner: elegir víctima del Space Pirate -->
     <div class="trade-offer-banner" id="rVictimBanner" style="display:none;border-color:rgba(192,57,43,0.5);background:rgba(192,57,43,0.08)">
-      <div class="tob-header" style="color:#ff8a80">☠ Elige a quién robar</div>
+      <div class="tob-header" style="color:#ff8a80">👾 Elige a quién atacar</div>
       <div id="rVictimBody" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
     </div>
 
@@ -1299,7 +1299,7 @@ body.remote .toast-item{
           🎲 Tirar Dados
         </button>
         <button class="action-btn" id="rBtnBuildSettlement">
-          🏠 Poblado
+          🛸 Base Lunar
           <span class="cost">
             <span class="cost-chip" style="background:var(--c-wood)"></span>
             <span class="cost-chip" style="background:var(--c-brick)"></span>
@@ -1308,14 +1308,14 @@ body.remote .toast-item{
           </span>
         </button>
         <button class="action-btn" id="rBtnBuildRoad">
-          🛤 Carretera
+          🚀 Corredor
           <span class="cost">
             <span class="cost-chip" style="background:var(--c-wood)"></span>
             <span class="cost-chip" style="background:var(--c-brick)"></span>
           </span>
         </button>
         <button class="action-btn" id="rBtnBuildCity">
-          🏛 Ciudad
+          🌌 Metrópolis
           <span class="cost">
             <span class="cost-chip" style="background:var(--c-wheat)"></span>
             <span class="cost-chip" style="background:var(--c-wheat)"></span>
@@ -1325,7 +1325,7 @@ body.remote .toast-item{
           </span>
         </button>
         <button class="action-btn" id="rBtnBuyDev">
-          📜 Carta Desarrollo
+          📡 Tecnología
           <span class="cost">
             <span class="cost-chip" style="background:var(--c-wool)"></span>
             <span class="cost-chip" style="background:var(--c-wheat)"></span>
@@ -1433,20 +1433,20 @@ const BOARD_LAYOUTS = {
 };
 
 const TERRAIN_INFO = {
-  forest:   {color:'var(--t-forest)',   name:'Bosque',   resource:'wood'},
-  pasture:  {color:'var(--t-pasture)',  name:'Pradera',  resource:'wool'},
-  field:    {color:'var(--t-field)',    name:'Campo',    resource:'wheat'},
-  mountain: {color:'var(--t-mountain)', name:'Montaña',  resource:'ore'},
-  hill:     {color:'var(--t-hill)',     name:'Colina',   resource:'brick'},
-  desert:   {color:'var(--t-desert)',   name:'Desierto', resource:null},
+  forest:   {color:'var(--t-forest)',   name:'Mina de Titanio',      resource:'wood'},
+  pasture:  {color:'var(--t-pasture)',  name:'Lab Biotecnológico',   resource:'wool'},
+  field:    {color:'var(--t-field)',    name:'Central Energética',   resource:'wheat'},
+  mountain: {color:'var(--t-mountain)', name:'Nebulosa de Cristales',resource:'ore'},
+  hill:     {color:'var(--t-hill)',     name:'Yacimiento Nano',      resource:'brick'},
+  desert:   {color:'var(--t-desert)',   name:'Zona Muerta',          resource:null},
 };
 
 const RESOURCE_INFO = {
-  wood:  {name:'Madera',  color:'var(--c-wood)',  emoji:'🌲'},
-  wool:  {name:'Lana',    color:'var(--c-wool)',  emoji:'🐑'},
-  wheat: {name:'Trigo',   color:'var(--c-wheat)', emoji:'🌾'},
-  ore:   {name:'Mineral', color:'var(--c-ore)',   emoji:'⛏'},
-  brick: {name:'Arcilla', color:'var(--c-brick)', emoji:'🧱'},
+  wood:  {name:'Titanio',        color:'var(--c-wood)',  emoji:'⚙️'},
+  wool:  {name:'Biotech',        color:'var(--c-wool)',  emoji:'🧬'},
+  wheat: {name:'Energía',        color:'var(--c-wheat)', emoji:'⚡'},
+  ore:   {name:'Cristales',      color:'var(--c-ore)',   emoji:'💎'},
+  brick: {name:'Nanomateriales', color:'var(--c-brick)', emoji:'🧱'},
 };
 
 const TERRAIN_BAGS = {
@@ -1812,7 +1812,7 @@ function startGame(opts){
   const desert = STATE.hexes.find(h=>h.terrain==='desert');
   if(desert) STATE.robberHex = hexKey(desert.q, desert.r);
 
-  logEvent('Partida iniciada · Fase de colocación inicial', '#d9b46a');
+  logEvent('🚀 ¡Partida iniciada! · Fase de colonización espacial', '#d9b46a');
   renderAll();
   broadcastState();
 }
@@ -1858,7 +1858,7 @@ function rollDice(){
 
   setTimeout(()=>{
     if(sum===7){
-      logEvent(`🎲 ${d1}+${d2}=${sum} · ¡Ladrón!`, '#c0392b');
+      logEvent(`🎲 ${d1}+${d2}=${sum} · 👾 ¡Space Pirate!`, '#c0392b');
       // Construir cola de descarte — los jugadores eligen manualmente
       STATE.discardQueue = {};
       STATE.players.forEach(p=>{
@@ -1914,7 +1914,7 @@ function submitDiscard(playerId, selection){
   if(Object.keys(STATE.discardQueue).length === 0){
     STATE.phase = 'robber';
     STATE.pendingAction = {type:'move-robber', playerId:STATE.players[STATE.currentPlayerIdx].id};
-    logEvent('Todos descartaron · Mueve el ladrón', '#c0392b');
+    logEvent('Todos descartaron · Mueve al Space Pirate', '#c0392b');
   }
   renderAll();
   broadcastState();
@@ -1937,7 +1937,7 @@ function endTurn(){
     return advanceStartingPhase();
   }
   if(STATE.phase === 'robber' || STATE.phase === 'discard'){
-    return toast('Resuelve el ladrón antes', true);
+    return toast('Resuelve al Space Pirate primero', true);
   }
   if(!STATE.lastRoll && STATE.phase==='main'){
     return toast('Debes tirar los dados primero', true);
@@ -1968,7 +1968,7 @@ function endTurn(){
 function advanceStartingPhase(){
   // Verifica si el jugador actual colocó settlement + road
   if(!STATE.startingPlacedThisTurn.settlement || !STATE.startingPlacedThisTurn.road){
-    return toast('Coloca un poblado y una carretera', true);
+    return toast('Coloca una Base Lunar y un Corredor Estelar', true);
   }
 
   // Segunda colocación: regalar recursos de los hexes adyacentes al poblado
@@ -2051,12 +2051,12 @@ function requestBuild(playerId, type){
   // Verificar que haya al menos un lugar válido antes de entrar en modo colocación
   if(type === 'settlement'){
     const any = [...STATE.vertices.values()].some(v => isVertexValidForSettlement(v.id, playerId, false));
-    if(!any) return toast('No hay vértice válido para un poblado (necesitas carretera propia y distancia libre)', true);
+    if(!any) return toast('No hay vértice válido para una Base Lunar (necesitas Corredor propio y distancia libre)', true);
   } else if(type === 'road'){
     const any = [...STATE.edges.values()].some(e => isEdgeValidForRoad(e.id, playerId, false));
-    if(!any) return toast('No hay arista válida para una carretera', true);
+    if(!any) return toast('No hay arista válida para un Corredor Estelar', true);
   } else if(type === 'city'){
-    if(!me.settlements.length) return toast('No tienes poblados para mejorar a ciudad', true);
+    if(!me.settlements.length) return toast('No tienes Bases Lunares para mejorar a Metrópolis', true);
   }
 
   // Activar modo colocación
@@ -2094,17 +2094,17 @@ function playDevCard(playerId, cardType, opts={}){
       me.knightsPlayed = (me.knightsPlayed||0) + 1;
       STATE.pendingAction = {type:'move-robber', playerId, returnPhase: STATE.phase};
       STATE.phase = 'robber';
-      logEvent(`${me.name} juega Caballero`, me.color);
+      logEvent(`${me.name} despliega Guardian 🛡`, me.color);
       break;
     case 'road':
       STATE.devRoadsLeft = 2;
       STATE.pendingAction = {type:'place-road', playerId, free:true};
-      logEvent(`${me.name} juega Construir 2 Carreteras`, me.color);
+      logEvent(`${me.name} construye 2 Corredores Estelares 🚀`, me.color);
       break;
     case 'plenty':
       me.resources[opts.res1] = (me.resources[opts.res1]||0) + 1;
       me.resources[opts.res2] = (me.resources[opts.res2]||0) + 1;
-      logEvent(`${me.name} · Año de Cosecha: ${RESOURCE_INFO[opts.res1].name} + ${RESOURCE_INFO[opts.res2].name}`, me.color);
+      logEvent(`${me.name} · Suministro: ${RESOURCE_INFO[opts.res1].name} + ${RESOURCE_INFO[opts.res2].name}`, me.color);
       break;
     case 'monopoly': {
       let total = 0;
@@ -2115,7 +2115,7 @@ function playDevCard(playerId, cardType, opts={}){
         me.resources[opts.res] = (me.resources[opts.res]||0) + q;
         total += q;
       });
-      logEvent(`${me.name} · Monopolio: roba ${total} ${RESOURCE_INFO[opts.res].name}`, me.color);
+      logEvent(`${me.name} · Asalto Pirata: roba ${total} ${RESOURCE_INFO[opts.res].name}`, me.color);
       break;
     }
   }
@@ -2135,7 +2135,7 @@ function placeSettlement(vertexId, playerId){
   }
   me.settlements.push({vertex:vertexId});
   me.vp++;
-  logEvent(`${me.name} construye poblado`, me.color);
+  logEvent(`${me.name} construye Base Lunar 🛸`, me.color);
 
   if(isStarting){
     STATE.startingPlacedThisTurn.settlement = true;
@@ -2164,7 +2164,7 @@ function placeRoad(edgeId, playerId){
   // Recalcular ruta más larga
   recalcLongestRoad();
 
-  logEvent(`${me.name} construye carretera`, me.color);
+  logEvent(`${me.name} traza Corredor Estelar 🚀`, me.color);
   if(isStarting){
     STATE.startingPlacedThisTurn.road = true;
     STATE.pendingAction = null;
@@ -2185,13 +2185,13 @@ function placeRoad(edgeId, playerId){
 function placeCity(vertexId, playerId){
   const me = STATE.players.find(p=>p.id===playerId);
   if(!isVertexValidForCity(vertexId, playerId)){
-    return toast('Debes mejorar uno de tus poblados', true);
+    return toast('Debes mejorar una de tus Bases Lunares', true);
   }
   payCost(me, COSTS.city);
   me.settlements = me.settlements.filter(s=>s.vertex!==vertexId);
   me.cities.push({vertex:vertexId});
   me.vp++; // settlement era 1pt, city es 2 -> ya tenía 1, ahora suma 1 más
-  logEvent(`${me.name} mejora a ciudad`, me.color);
+  logEvent(`${me.name} construye Metrópolis Lunar 🌌`, me.color);
   STATE.pendingAction = null;
   renderAll();
   broadcastState();
@@ -2201,9 +2201,9 @@ function placeCity(vertexId, playerId){
 function moveRobber(targetHexKey, playerId){
   if(STATE.phase!=='robber') return;
   if(STATE.players[STATE.currentPlayerIdx].id !== playerId) return toast('No es tu turno', true);
-  if(targetHexKey === STATE.robberHex) return toast('Mueve el ladrón a otra casilla', true);
+  if(targetHexKey === STATE.robberHex) return toast('Mueve al Space Pirate a otra casilla', true);
   STATE.robberHex = targetHexKey;
-  logEvent(`${STATE.players[STATE.currentPlayerIdx].name} mueve el ladrón`, STATE.players[STATE.currentPlayerIdx].color);
+  logEvent(`${STATE.players[STATE.currentPlayerIdx].name} mueve al Space Pirate 👾`, STATE.players[STATE.currentPlayerIdx].color);
 
   // Identificar víctimas
   const [tq, tr] = targetHexKey.split(',').map(Number);
@@ -2254,7 +2254,7 @@ function stealFrom(robberId, victimId){
     const stolen = cards[Math.floor(Math.random()*cards.length)];
     victim.resources[stolen]--;
     robber.resources[stolen]++;
-    logEvent(`${robber.name} roba 1 carta a ${victim.name}`, robber.color);
+    logEvent(`👾 ${robber.name} saquea 1 carta a ${victim.name}`, robber.color);
   }
   STATE.robberVictims = [];
   STATE.phase = STATE.pendingAction?.returnPhase || 'main';
@@ -2408,14 +2408,16 @@ function renderBoard(){
   defs.innerHTML = `
     <pattern id="waterPattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
       <rect width="40" height="40" fill="${getCSSVar('--t-sea')}"/>
-      <path d="M0,20 Q10,15 20,20 T40,20" stroke="rgba(217,180,106,0.18)" stroke-width="1" fill="none">
-        <animate attributeName="d" dur="6s" repeatCount="indefinite"
-          values="M0,20 Q10,15 20,20 T40,20;M0,20 Q10,25 20,20 T40,20;M0,20 Q10,15 20,20 T40,20"/>
-      </path>
-      <path d="M0,30 Q10,25 20,30 T40,30" stroke="rgba(217,180,106,0.12)" stroke-width="1" fill="none">
-        <animate attributeName="d" dur="8s" repeatCount="indefinite"
-          values="M0,30 Q10,35 20,30 T40,30;M0,30 Q10,25 20,30 T40,30;M0,30 Q10,35 20,30 T40,30"/>
-      </path>
+      <circle cx="5"  cy="8"  r="0.8" fill="rgba(200,200,255,0.55)"/>
+      <circle cx="18" cy="3"  r="0.6" fill="rgba(200,200,255,0.45)"/>
+      <circle cx="32" cy="12" r="1"   fill="rgba(200,200,255,0.60)"/>
+      <circle cx="10" cy="22" r="0.7" fill="rgba(200,200,255,0.40)"/>
+      <circle cx="28" cy="18" r="0.9" fill="rgba(200,200,255,0.50)"/>
+      <circle cx="38" cy="6"  r="0.6" fill="rgba(200,200,255,0.45)"/>
+      <circle cx="22" cy="35" r="0.8" fill="rgba(200,200,255,0.40)"/>
+      <circle cx="36" cy="30" r="0.6" fill="rgba(200,200,255,0.38)"/>
+      <circle cx="3"  cy="35" r="1.1" fill="rgba(180,150,255,0.35)"/>
+      <circle cx="15" cy="28" r="0.5" fill="rgba(200,200,255,0.45)"/>
     </pattern>
     <radialGradient id="boardLight" cx="50%" cy="35%" r="65%">
       <stop offset="0%"   stop-color="rgba(255,245,210,0.13)"/>
@@ -2452,7 +2454,7 @@ function renderBoard(){
   sea.setAttribute('cx',0);sea.setAttribute('cy',0);
   sea.setAttribute('r', STATE.gameMode==='ext'?470:420);
   sea.setAttribute('fill','url(#waterPattern)');
-  sea.setAttribute('stroke','rgba(217,180,106,0.25)');
+  sea.setAttribute('stroke','rgba(100,80,200,0.30)');
   sea.setAttribute('stroke-width','3');
   boardSVG.appendChild(sea);
 
@@ -2460,7 +2462,7 @@ function renderBoard(){
   ring.setAttribute('cx',0);ring.setAttribute('cy',0);
   ring.setAttribute('r', STATE.gameMode==='ext'?465:415);
   ring.setAttribute('fill','none');
-  ring.setAttribute('stroke','rgba(217,180,106,0.18)');
+  ring.setAttribute('stroke','rgba(100,80,200,0.22)');
   ring.setAttribute('stroke-width','1');
   ring.setAttribute('stroke-dasharray','4 6');
   boardSVG.appendChild(ring);
@@ -2507,8 +2509,8 @@ function renderBoard(){
     } else if(h.terrain==='desert'){
       const mark = document.createElementNS('http://www.w3.org/2000/svg','g');
       mark.innerHTML = `
-        <circle cx="${p.x}" cy="${p.y}" r="${STATE.size*0.32}" fill="rgba(255,240,200,0.15)" stroke="rgba(120,80,30,0.5)" stroke-width="1.5"/>
-        <text x="${p.x}" y="${p.y+8}" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="${STATE.size*0.5}" fill="rgba(80,50,15,0.7)" font-weight="600">☀</text>
+        <circle cx="${p.x}" cy="${p.y}" r="${STATE.size*0.32}" fill="rgba(40,0,80,0.20)" stroke="rgba(100,50,200,0.45)" stroke-width="1.5"/>
+        <text x="${p.x}" y="${p.y+8}" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="${STATE.size*0.5}" fill="rgba(120,80,200,0.65)" font-weight="600">☠</text>
       `;
       g.appendChild(mark);
     }
@@ -2668,8 +2670,8 @@ function renderPorts(parent){
     // Tooltip
     const title = document.createElementNS('http://www.w3.org/2000/svg','title');
     title.textContent = port.type === '3:1'
-      ? 'Puerto Genérico · 3:1 (cualquier recurso por uno cualquiera)'
-      : `Puerto de ${RESOURCE_INFO[port.type].name} · 2:1`;
+      ? 'Estación Comercial · 3:1 (cualquier recurso)'
+      : `Estación de ${RESOURCE_INFO[port.type].name} · 2:1`;
     g.appendChild(title);
 
     parent.appendChild(g);
@@ -2726,10 +2728,23 @@ function renderRobber(parent){
   g.setAttribute('transform', `translate(${p.x-15},${p.y-30})`);
   g.style.pointerEvents = 'none';
   g.innerHTML = `
-    <ellipse cx="15" cy="56" rx="14" ry="3" fill="#000" opacity="0.6"/>
-    <path d="M15 4 C7 4 4 12 4 20 C4 28 6 32 6 52 H24 C24 32 26 28 26 20 C26 12 23 4 15 4 Z" fill="#0a0a0a" stroke="#000" stroke-width="1.5"/>
-    <ellipse cx="11" cy="20" rx="2.5" ry="2" fill="#ffeb3b"/>
-    <ellipse cx="19" cy="20" rx="2.5" ry="2" fill="#ffeb3b"/>
+    <ellipse cx="15" cy="56" rx="14" ry="3" fill="#000" opacity="0.5"/>
+    <!-- Cuerpo traje espacial Space Pirate -->
+    <ellipse cx="15" cy="28" rx="11" ry="13" fill="#1a0a2e" stroke="#7c3aed" stroke-width="1.5"/>
+    <!-- Visor casco -->
+    <ellipse cx="15" cy="20" rx="9" ry="8" fill="#0a0a1a" stroke="#7c3aed" stroke-width="1.5"/>
+    <ellipse cx="15" cy="20" rx="7" ry="6" fill="rgba(120,0,255,0.25)"/>
+    <!-- Ojos rojos brillantes -->
+    <ellipse cx="11" cy="20" rx="2.5" ry="2" fill="#ff0040"/>
+    <ellipse cx="19" cy="20" rx="2.5" ry="2" fill="#ff0040"/>
+    <ellipse cx="11" cy="20" rx="1.2" ry="1" fill="rgba(255,80,100,0.8)"/>
+    <ellipse cx="19" cy="20" rx="1.2" ry="1" fill="rgba(255,80,100,0.8)"/>
+    <!-- Calavera pirata en el pecho -->
+    <circle cx="15" cy="34" r="4" fill="rgba(255,255,255,0.12)" stroke="rgba(124,58,237,0.6)" stroke-width="0.8"/>
+    <text x="15" y="37" text-anchor="middle" font-size="6" fill="rgba(200,50,50,0.85)">☠</text>
+    <!-- Detalles hombros -->
+    <rect x="3"  y="22" width="5" height="8" rx="2" fill="#2d1060" stroke="#7c3aed" stroke-width="0.8"/>
+    <rect x="22" y="22" width="5" height="8" rx="2" fill="#2d1060" stroke="#7c3aed" stroke-width="0.8"/>
   `;
   parent.appendChild(g);
 }
@@ -2980,67 +2995,83 @@ function onHexClick(hex){
 }
 
 /* Texturas de terrenos */
+// Titanio: mina con engranajes y tuberías
 function treeIcons(){return `
-  <path d="M15,42 L15,32 L9,32 L15,17 L21,32 L15,32" fill="rgba(22,100,48,0.92)" stroke="rgba(0,20,8,0.45)" stroke-width="0.8" stroke-linejoin="round"/>
-  <path d="M44,54 L44,44 L38,44 L44,30 L50,44 L44,44" fill="rgba(16,80,38,0.88)" stroke="rgba(0,20,8,0.4)"  stroke-width="0.8" stroke-linejoin="round"/>
-  <path d="M28,19 L28,11 L23,11 L28,1  L33,11 L28,11" fill="rgba(26,110,52,0.90)" stroke="rgba(0,20,8,0.4)"  stroke-width="0.7" stroke-linejoin="round"/>
-  <path d="M52,25 L52,17 L47,17 L52,7  L57,17 L52,17" fill="rgba(16,80,38,0.85)" stroke="rgba(0,20,8,0.35)" stroke-width="0.7" stroke-linejoin="round"/>
-  <ellipse cx="20" cy="45" rx="7" ry="2.5" fill="rgba(0,35,12,0.18)"/>
-  <ellipse cx="48" cy="57" rx="6" ry="2"   fill="rgba(0,35,12,0.15)"/>
+  <circle cx="12" cy="28" r="7" fill="none" stroke="rgba(148,180,220,0.55)" stroke-width="2"/>
+  <circle cx="12" cy="28" r="3.5" fill="rgba(148,180,220,0.45)"/>
+  <line x1="12" y1="18" x2="12" y2="38" stroke="rgba(148,180,220,0.35)" stroke-width="1.2"/>
+  <line x1="2"  y1="28" x2="22" y2="28" stroke="rgba(148,180,220,0.35)" stroke-width="1.2"/>
+  <line x1="5"  y1="21" x2="19" y2="35" stroke="rgba(148,180,220,0.28)" stroke-width="1"/>
+  <line x1="19" y1="21" x2="5"  y2="35" stroke="rgba(148,180,220,0.28)" stroke-width="1"/>
+  <circle cx="42" cy="16" r="5" fill="none" stroke="rgba(100,150,200,0.50)" stroke-width="1.8"/>
+  <circle cx="42" cy="16" r="2.5" fill="rgba(100,150,200,0.40)"/>
+  <line x1="42" y1="9"  x2="42" y2="23" stroke="rgba(100,150,200,0.32)" stroke-width="1.1"/>
+  <line x1="35" y1="16" x2="49" y2="16" stroke="rgba(100,150,200,0.32)" stroke-width="1.1"/>
+  <rect x="25" y="42" width="14" height="6" rx="1" fill="rgba(100,140,190,0.30)" stroke="rgba(148,180,220,0.38)" stroke-width="0.8"/>
+  <line x1="28" y1="42" x2="28" y2="48" stroke="rgba(148,180,220,0.22)" stroke-width="0.7"/>
+  <line x1="32" y1="42" x2="32" y2="48" stroke="rgba(148,180,220,0.22)" stroke-width="0.7"/>
+  <line x1="36" y1="42" x2="36" y2="48" stroke="rgba(148,180,220,0.22)" stroke-width="0.7"/>
 `}
+// Biotech: lab con helices de ADN y esporas
 function grassIcons(){return `
-  <path d="M7,43  C7.5,37 9.5,34 10,43"  stroke="rgba(100,215,115,0.55)" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-  <path d="M13,41 C13.5,35 15.5,32 16,41" stroke="rgba(88,198,102,0.50)" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-  <path d="M29,47 C29.5,41 31.5,38 32,47" stroke="rgba(100,215,115,0.55)" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-  <path d="M35,44 C35.5,38 37.5,35 38,44" stroke="rgba(88,198,102,0.50)" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-  <path d="M19,23 C19.5,17 21.5,14 22,23" stroke="rgba(95,205,108,0.48)" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-  <path d="M43,21 C43.5,15 45.5,12 46,21" stroke="rgba(88,198,102,0.45)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-  <ellipse cx="23" cy="31" rx="7"   ry="4.5" fill="rgba(235,235,235,0.40)"/>
-  <circle  cx="28" cy="28" r="3.2"          fill="rgba(235,235,235,0.40)"/>
-  <line x1="18" y1="35" x2="18" y2="39" stroke="rgba(150,130,110,0.45)" stroke-width="1.1"/>
-  <line x1="21" y1="35" x2="21" y2="39" stroke="rgba(150,130,110,0.45)" stroke-width="1.1"/>
-  <line x1="25" y1="35" x2="25" y2="39" stroke="rgba(150,130,110,0.45)" stroke-width="1.1"/>
+  <path d="M10,6 C14,12 10,18 14,24 C18,30 14,36 18,42" stroke="rgba(0,200,160,0.55)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <path d="M18,6 C14,12 18,18 14,24 C10,30 14,36 10,42" stroke="rgba(0,200,160,0.45)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <line x1="10" y1="10" x2="18" y2="11" stroke="rgba(0,200,160,0.40)" stroke-width="1"/>
+  <line x1="10" y1="16" x2="18" y2="17" stroke="rgba(0,200,160,0.40)" stroke-width="1"/>
+  <line x1="11" y1="22" x2="17" y2="23" stroke="rgba(0,200,160,0.40)" stroke-width="1"/>
+  <line x1="12" y1="28" x2="16" y2="29" stroke="rgba(0,200,160,0.40)" stroke-width="1"/>
+  <line x1="11" y1="34" x2="17" y2="35" stroke="rgba(0,200,160,0.35)" stroke-width="1"/>
+  <circle cx="36" cy="18" r="5" fill="rgba(0,220,170,0.18)" stroke="rgba(0,200,160,0.45)" stroke-width="1.2"/>
+  <circle cx="36" cy="18" r="2.5" fill="rgba(0,220,170,0.35)"/>
+  <circle cx="42" cy="32" r="3.5" fill="rgba(0,200,140,0.20)" stroke="rgba(0,200,160,0.40)" stroke-width="1"/>
+  <circle cx="42" cy="32" r="1.5" fill="rgba(0,220,170,0.30)"/>
+  <circle cx="48" cy="14" r="2.5" fill="rgba(0,200,160,0.22)" stroke="rgba(0,200,160,0.35)" stroke-width="0.8"/>
 `}
+// Energía: rayos y paneles solares estelares
 function wheatIcons(){return `
-  <line x1="8"  y1="38" x2="8"  y2="18" stroke="rgba(110,72,8,0.58)"  stroke-width="1.1"/>
-  <ellipse cx="8"  cy="15" rx="2.5" ry="5.5" fill="rgba(205,148,22,0.78)"/>
-  <path d="M8,22 L4,17"  stroke="rgba(165,118,12,0.52)" stroke-width="1"/>
-  <path d="M8,22 L12,17" stroke="rgba(165,118,12,0.52)" stroke-width="1"/>
-  <line x1="22" y1="40" x2="22" y2="20" stroke="rgba(110,72,8,0.58)"  stroke-width="1.1"/>
-  <ellipse cx="22" cy="17" rx="2.5" ry="5.5" fill="rgba(218,158,18,0.82)"/>
-  <path d="M22,24 L18,19" stroke="rgba(165,118,12,0.52)" stroke-width="1"/>
-  <path d="M22,24 L26,19" stroke="rgba(165,118,12,0.52)" stroke-width="1"/>
-  <line x1="33" y1="22" x2="33" y2="5"  stroke="rgba(110,72,8,0.55)"  stroke-width="1"/>
-  <ellipse cx="33" cy="3"  rx="2.2" ry="4.5" fill="rgba(205,148,22,0.75)"/>
-  <path d="M33,9 L29,5"  stroke="rgba(165,118,12,0.48)" stroke-width="0.9"/>
-  <path d="M33,9 L37,5"  stroke="rgba(165,118,12,0.48)" stroke-width="0.9"/>
+  <polygon points="20,2 23,12 33,12 25,18 28,28 20,22 12,28 15,18 7,12 17,12" fill="rgba(255,220,0,0.40)" stroke="rgba(255,200,0,0.55)" stroke-width="0.8"/>
+  <line x1="20" y1="5"  x2="20" y2="0"  stroke="rgba(255,200,0,0.50)" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="28" y1="8"  x2="32" y2="4"  stroke="rgba(255,200,0,0.45)" stroke-width="1.1" stroke-linecap="round"/>
+  <line x1="31" y1="17" x2="36" y2="17" stroke="rgba(255,200,0,0.45)" stroke-width="1.1" stroke-linecap="round"/>
+  <line x1="12" y1="8"  x2="8"  y2="4"  stroke="rgba(255,200,0,0.45)" stroke-width="1.1" stroke-linecap="round"/>
+  <line x1="9"  y1="17" x2="4"  y2="17" stroke="rgba(255,200,0,0.45)" stroke-width="1.1" stroke-linecap="round"/>
+  <path d="M36,36 L39,30 L43,30 L40,34 L43,34 L38,42" stroke="rgba(255,200,0,0.60)" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
 `}
+// Cristales: nebulosa con gemas flotantes
 function mountainIcons(){return `
-  <path d="M30,4  L58,56 L2,56  Z" fill="rgba(40,55,72,0.72)"  stroke="rgba(0,0,0,0.3)" stroke-width="0.9"/>
-  <path d="M30,4  L39,22 L30,27 L21,22 Z" fill="rgba(225,232,242,0.58)"/>
-  <path d="M14,56 L40,18 L58,56 Z" fill="rgba(50,68,88,0.88)"  stroke="rgba(0,0,0,0.3)" stroke-width="0.9"/>
-  <path d="M40,18 L48,33 L40,38 L32,33 Z" fill="rgba(225,232,242,0.52)"/>
-  <path d="M14,56 L22,45 L28,50 L34,44 L40,50 L46,43 L58,56 Z" fill="rgba(30,42,58,0.35)"/>
+  <polygon points="12,52 24,20 36,52" fill="rgba(160,80,255,0.35)" stroke="rgba(180,100,255,0.55)" stroke-width="0.9"/>
+  <polygon points="24,20 29,32 24,36 19,32" fill="rgba(220,180,255,0.50)"/>
+  <polygon points="30,52 44,15 58,52" fill="rgba(130,60,230,0.45)" stroke="rgba(160,80,255,0.55)" stroke-width="0.9"/>
+  <polygon points="44,15 50,28 44,32 38,28" fill="rgba(210,170,255,0.45)"/>
+  <circle cx="8"  cy="18" r="2.8" fill="rgba(200,150,255,0.55)"/>
+  <circle cx="52" cy="8"  r="2"   fill="rgba(200,150,255,0.45)"/>
+  <circle cx="20" cy="8"  r="1.5" fill="rgba(220,180,255,0.50)"/>
+  <path d="M12,52 L20,42 L26,47 L33,40 L40,47 L46,40 L58,52 Z" fill="rgba(100,40,180,0.30)"/>
 `}
+// Nanomateriales: estructuras moleculares hexagonales
 function hillIcons(){return `
-  <ellipse cx="13" cy="38" rx="13" ry="8"  fill="rgba(148,62,20,0.60)"/>
-  <ellipse cx="38" cy="45" rx="15" ry="9"  fill="rgba(138,56,18,0.56)"/>
-  <ellipse cx="24" cy="16" rx="11" ry="7"  fill="rgba(158,68,22,0.56)"/>
-  <ellipse cx="47" cy="23" rx="9"  ry="5.5" fill="rgba(132,54,16,0.50)"/>
-  <path d="M4,42  Q13,37 22,42" stroke="rgba(185,88,32,0.38)" stroke-width="1" fill="none"/>
-  <path d="M24,49 Q33,44 42,49" stroke="rgba(175,82,28,0.32)" stroke-width="1" fill="none"/>
+  <polygon points="25,6 33,10 33,18 25,22 17,18 17,10" fill="rgba(170,120,255,0.22)" stroke="rgba(170,120,255,0.55)" stroke-width="1.2"/>
+  <circle cx="25" cy="14" r="2.5" fill="rgba(170,120,255,0.55)"/>
+  <polygon points="44,28 50,32 50,38 44,42 38,38 38,32" fill="rgba(140,90,230,0.20)" stroke="rgba(150,100,240,0.50)" stroke-width="1.1"/>
+  <circle cx="44" cy="35" r="2" fill="rgba(150,100,240,0.50)"/>
+  <polygon points="10,30 16,34 16,40 10,44 4,40 4,34" fill="rgba(160,110,245,0.18)" stroke="rgba(160,110,245,0.45)" stroke-width="1"/>
+  <circle cx="10" cy="37" r="1.8" fill="rgba(160,110,245,0.45)"/>
+  <line x1="25" y1="22" x2="38" y2="32" stroke="rgba(160,110,245,0.35)" stroke-width="0.9"/>
+  <line x1="16" y1="34" x2="17" y2="18" stroke="rgba(160,110,245,0.30)" stroke-width="0.8"/>
+  <line x1="33" y1="18" x2="38" y2="32" stroke="rgba(160,110,245,0.30)" stroke-width="0.8"/>
 `}
+// Zona Muerta: espacio vacío con cráter y estrellas
 function desertIcons(){return `
-  <path d="M0,32 Q10,25 20,30 Q30,35 40,27" stroke="rgba(155,112,38,0.58)" stroke-width="1.3" fill="none"/>
-  <path d="M0,40 Q12,34 26,38 Q35,40 40,37" stroke="rgba(142,102,32,0.48)" stroke-width="1.1" fill="none"/>
-  <line x1="10" y1="21" x2="10" y2="7"  stroke="rgba(68,98,44,0.58)" stroke-width="2"   stroke-linecap="round"/>
-  <line x1="10" y1="14" x2="5"  y2="10" stroke="rgba(68,98,44,0.55)" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="10" y1="14" x2="15" y2="10" stroke="rgba(68,98,44,0.55)" stroke-width="1.5" stroke-linecap="round"/>
-  <circle cx="31" cy="10" r="4.5" fill="rgba(228,178,28,0.52)"/>
-  <circle cx="31" cy="10" r="7"   fill="none" stroke="rgba(228,178,28,0.28)" stroke-width="1.5"/>
-  <line x1="31" y1="1"  x2="31" y2="3"  stroke="rgba(228,178,28,0.35)" stroke-width="1.2"/>
-  <line x1="38" y1="3"  x2="37" y2="4"  stroke="rgba(228,178,28,0.30)" stroke-width="1.2"/>
-  <line x1="40" y1="10" x2="38" y2="10" stroke="rgba(228,178,28,0.30)" stroke-width="1.2"/>
+  <ellipse cx="20" cy="32" rx="14" ry="8" fill="rgba(40,40,60,0.55)" stroke="rgba(80,80,120,0.40)" stroke-width="1"/>
+  <ellipse cx="20" cy="30" rx="9"  ry="5" fill="rgba(30,30,50,0.60)" stroke="rgba(70,70,110,0.35)" stroke-width="0.8"/>
+  <circle cx="8"  cy="10" r="1.2" fill="rgba(200,200,255,0.55)"/>
+  <circle cx="28" cy="5"  r="0.9" fill="rgba(200,200,255,0.45)"/>
+  <circle cx="35" cy="14" r="1.5" fill="rgba(200,200,255,0.60)"/>
+  <circle cx="38" cy="28" r="0.8" fill="rgba(200,200,255,0.40)"/>
+  <circle cx="5"  cy="22" r="1"   fill="rgba(200,200,255,0.45)"/>
+  <circle cx="32" cy="40" r="0.7" fill="rgba(200,200,255,0.35)"/>
+  <line x1="35" y1="12" x2="36" y2="10" stroke="rgba(200,200,255,0.30)" stroke-width="0.8"/>
+  <line x1="35" y1="12" x2="37" y2="13" stroke="rgba(200,200,255,0.30)" stroke-width="0.8"/>
 `}
 
 /* =============== MÓDULO 13: RENDER UI BOARD (paneles, banners) ================ */
@@ -3082,7 +3113,7 @@ function renderPlayersList(){
         .map(([k,q])=>`<span title="${RESOURCE_INFO[k].name}" style="display:inline-flex;align-items:center;gap:2px;background:${RESOURCE_INFO[k].color}33;border:1px solid ${RESOURCE_INFO[k].color}66;border-radius:4px;padding:1px 5px;font-size:10px">${RESOURCE_INFO[k].emoji}<b style="color:var(--ink)">${q}</b></span>`).join('');
       const devChips = (()=>{
         const dc = {knight:0,vp:0,road:0,plenty:0,monopoly:0};
-        const dn = {knight:'⚔',vp:'🏆',road:'🛤',plenty:'🌾',monopoly:'🦹'};
+        const dn = {knight:'🛡',vp:'🏆',road:'🚀',plenty:'⚡',monopoly:'👾'};
         [...(p.devCards||[]),...(p.devCardsBoughtThisTurn||[])].forEach(k=>{ if(dc[k]!==undefined) dc[k]++; });
         return Object.entries(dc).filter(([,q])=>q>0)
           .map(([k,q])=>`<span title="${k}" style="display:inline-flex;align-items:center;gap:2px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:4px;padding:1px 5px;font-size:10px">${dn[k]}<b style="color:var(--ink)">${q}</b></span>`).join('');
@@ -3091,12 +3122,12 @@ function renderPlayersList(){
         <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">${resChips||'<span style="font-size:10px;color:var(--ink-dim)">Sin recursos</span>'}</div>
         ${devChips?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">${devChips}</div>`:''}
         <div style="display:flex;gap:8px;font-size:10px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
-          <span>⚔ ${p.knightsPlayed||0}</span>
-          <span>🛤 ${p.longestRoad||0}</span>
-          <span>🏠 ${(p.settlements||[]).length}</span>
-          <span>🏛 ${(p.cities||[]).length}</span>
-          ${p._lrBonus?'<span style="color:var(--gold-soft)">🛤+2</span>':''}
-          ${p._laBonus?'<span style="color:var(--gold-soft)">⚔+2</span>':''}
+          <span>🛡 ${p.knightsPlayed||0}</span>
+          <span>🚀 ${p.longestRoad||0}</span>
+          <span>🛸 ${(p.settlements||[]).length}</span>
+          <span>🌌 ${(p.cities||[]).length}</span>
+          ${p._lrBonus?'<span style="color:var(--gold-soft)">🚀+2</span>':''}
+          ${p._laBonus?'<span style="color:var(--gold-soft)">🛡+2</span>':''}
         </div>
       `;
     } else {
@@ -3105,7 +3136,7 @@ function renderPlayersList(){
         <div style="display:flex;gap:8px;margin-bottom:6px;font-size:11px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
           <span title="Recursos en mano">🎴 <b style="color:var(--ink)">${totalRes}</b></span>
           <span title="Cartas de desarrollo">📜 <b style="color:var(--ink)">${totalDev}</b></span>
-          <span title="Caballeros jugados">⚔ <b style="color:var(--ink)">${p.knightsPlayed||0}</b></span>
+          <span title="Guardians desplegados">🛡 <b style="color:var(--ink)">${p.knightsPlayed||0}</b></span>
         </div>
       `;
     }
@@ -3113,9 +3144,9 @@ function renderPlayersList(){
     // Footer: construcciones (solo en modo remoto, en board ya están arriba)
     const footer = STATE.appMode === 'board' ? '' : `
       <div style="display:flex;gap:8px;align-items:center;font-size:10px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
-        <span title="Ruta más larga">🛤 ${p.longestRoad||0}</span>
-        <span title="Asentamientos">🏠 ${(p.settlements||[]).length}</span>
-        <span title="Ciudades">🏛 ${(p.cities||[]).length}</span>
+        <span title="Corredor más largo">🚀 ${p.longestRoad||0}</span>
+        <span title="Bases Lunares">🛸 ${(p.settlements||[]).length}</span>
+        <span title="Metrópolis">🌌 ${(p.cities||[]).length}</span>
       </div>
     `;
 
@@ -3145,7 +3176,7 @@ function renderBoardActions(){
     else if(STATE.phase==='rolling')  title.innerHTML = `${n} — tira los dados`;
     else if(STATE.phase==='main')     title.innerHTML = `${n} — turno principal`;
     else if(STATE.phase==='discard')  title.innerHTML = `Descartando cartas…`;
-    else if(STATE.phase==='robber')   title.innerHTML = `${n} — mueve el ladrón`;
+    else if(STATE.phase==='robber')   title.innerHTML = `${n} — mueve al Space Pirate`;
     else                              title.innerHTML = `${n}`;
   }
 
@@ -3234,7 +3265,7 @@ function renderBoardActions(){
   if(STATE.phase==='starting'){
     const pa2 = STATE.pendingAction;
     if(pa2 && pa2.playerId===me.id){
-      hintEl.textContent = pa2.type==='place-settlement' ? '👆 Haz clic en un vértice del tablero' : '👆 Haz clic en una arista del tablero';
+      hintEl.textContent = pa2.type==='place-settlement' ? '👆 Haz clic en un vértice para colocar la Base Lunar' : '👆 Haz clic en una arista para el Corredor Estelar';
     } else {
       hintEl.textContent = 'Esperando turno…';
     }
@@ -3243,7 +3274,7 @@ function renderBoardActions(){
     hintEl.textContent = '🎲 Tira los dados para comenzar tu turno';
     hintEl.style.display='';
   } else if(STATE.phase==='robber'){
-    hintEl.textContent = '🦹 Haz clic en un hexágono para mover el ladrón';
+    hintEl.textContent = '👾 Haz clic en un sector para mover al Space Pirate';
     hintEl.style.display='';
   } else if(STATE.phase==='discard'){
     hintEl.textContent = '🃏 Selecciona las cartas a descartar';
@@ -3278,7 +3309,7 @@ function renderBoardDevCards(){
   const canKnight  = !STATE.devCardPlayedThisTurn && !inPlacement && !STATE.pendingTrade
                       && (STATE.phase==='main'||STATE.phase==='rolling');
 
-  const devNames = {knight:'⚔ Caballero', vp:'🏆 Pto Victoria', road:'🛤 2 Carreteras', plenty:'🌾 Año de Cosecha', monopoly:'🦹 Monopolio'};
+  const devNames = {knight:'🛡 Guardian', vp:'🏆 Pto Victoria', road:'🚀 2 Corredores', plenty:'⚡ Suministro', monopoly:'👾 Asalto Pirata'};
 
   // Count playable types
   const counts = {knight:0,vp:0,road:0,plenty:0,monopoly:0};
@@ -3344,7 +3375,7 @@ function renderTurnBanner(){
     'rolling':'tirar dados',
     'main':'fase principal',
     'discard':'descartar',
-    'robber':'mover ladrón',
+    'robber':'mover Space Pirate',
     'gameover':'fin del juego'
   };
   ['turnDot','soOverlayDot'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.background=PLAYER_COLORS[me.color].hex;});
@@ -3462,7 +3493,7 @@ function renderRemote(){
   banner.classList.toggle('your-turn', isMyTurn);
   document.getElementById('rTurnDot').style.background = current?PLAYER_COLORS[current.color].hex:'transparent';
   document.getElementById('rTurnName').textContent = isMyTurn?'¡Tu Turno!':(current?current.name:'—');
-  const phaseLabels = {'lobby':'esperando','starting':STATE.startingPhase===1?'1ª colocación':'2ª colocación','rolling':'tirar dados','main':'fase principal','discard':'descartar','robber':'mover ladrón','gameover':'fin'};
+  const phaseLabels = {'lobby':'esperando','starting':STATE.startingPhase===1?'1ª colocación':'2ª colocación','rolling':'tirar dados','main':'fase principal','discard':'descartar','robber':'mover Space Pirate','gameover':'fin'};
   document.getElementById('rTurnPhase').textContent = phaseLabels[STATE.phase] || '';
   document.getElementById('rTurnDice').innerHTML = STATE.lastRoll
     ? `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-dim)">Último: <b style="color:var(--gold-soft)">${STATE.lastRoll.sum}</b></div>`
@@ -3495,7 +3526,7 @@ function renderRemote(){
   const devCounts = {knight:0, vp:0, road:0, plenty:0, monopoly:0};
   me.devCards.forEach(c=> devCounts[c]++);
   dev.innerHTML = '';
-  const devNames = {knight:'Caballero', vp:'Punto Victoria', road:'2 Carreteras', plenty:'Año de Cosecha', monopoly:'Monopolio'};
+  const devNames = {knight:'Guardian', vp:'Punto Victoria', road:'2 Corredores', plenty:'Suministro', monopoly:'Asalto Pirata'};
   const canPlayDev = isMyTurn && !STATE.devCardPlayedThisTurn && !inPlacement && !inTrade;
   ['knight','road','plenty','monopoly'].forEach(k=>{
     const q = devCounts[k];
@@ -3534,22 +3565,22 @@ function renderRemote(){
   if(inPlacement){
     const act = STATE.pendingAction;
     const labels = {
-      'place-settlement':'Colocando Poblado',
-      'place-road':'Colocando Carretera',
-      'place-city':'Colocando Ciudad',
-      'move-robber':'Moviendo el Ladrón'
+      'place-settlement':'Construyendo Base Lunar',
+      'place-road':'Trazando Corredor Estelar',
+      'place-city':'Construyendo Metrópolis',
+      'move-robber':'Moviendo Space Pirate'
     };
     const hints = {
       'place-settlement':'Señala la posición en el tablero',
       'place-road':'Señala la arista en el tablero',
-      'place-city':'Señala el poblado a mejorar',
-      'move-robber':'Señala el hexágono en el tablero'
+      'place-city':'Señala la Base Lunar a mejorar',
+      'move-robber':'Señala el sector en el tablero'
     };
     const icons = {
-      'place-settlement':'🏠',
-      'place-road':'🛤️',
-      'place-city':'🏛️',
-      'move-robber':'☠️'
+      'place-settlement':'🛸',
+      'place-road':'🚀',
+      'place-city':'🌌',
+      'move-robber':'👾'
     };
     document.getElementById('rPlacementIcon').textContent = icons[act.type] || '📍';
     document.getElementById('rPlacementTitle').textContent = labels[act.type] || 'Colocando...';
@@ -3707,7 +3738,7 @@ function renderRemote(){
       <div class="o-stats">
         <span title="Recursos en mano">🎴 ${totalRes}</span>
         <span title="Cartas de desarrollo">📜 ${totalDev}</span>
-        <span title="Caballeros jugados">⚔ ${p.knightsPlayed||0}</span>
+        <span title="Guardians desplegados">🛡 ${p.knightsPlayed||0}</span>
       </div>
       <div class="o-vp">${totalVP}<span style="font-size:9px;color:var(--ink-dim)"> PV</span></div>
     `;
@@ -3803,7 +3834,7 @@ function renderRobberBoard(){
   if(isVictimPhase && (STATE.robberVictims||[]).length > 0){
     sec.style.display = '';
     const robber = STATE.players.find(p=>p.id===STATE.pendingAction.playerId);
-    let html = `<div style="font-size:12px;margin-bottom:8px;color:var(--ink-dim)">${robber?.name||'?'} elige a quién robar:</div>`;
+    let html = `<div style="font-size:12px;margin-bottom:8px;color:var(--ink-dim)">👾 ${robber?.name||'?'} elige a quién saquear:</div>`;
     STATE.robberVictims.forEach(vid=>{
       const vp = STATE.players.find(p=>p.id===vid);
       if(!vp) return;
@@ -4336,9 +4367,9 @@ function renderProjectorScoreboard(){
       <div class="pp-stats">
         <span>🎴 ${totalRes}</span>
         <span>📜 ${totalDev}</span>
-        <span>⚔ ${p.knightsPlayed||0}</span>
-        <span>🛤 ${p.longestRoad||0}</span>
-        <span>🏠${(p.settlements||[]).length} 🏛${(p.cities||[]).length}</span>
+        <span>🛡 ${p.knightsPlayed||0}</span>
+        <span>🚀 ${p.longestRoad||0}</span>
+        <span>🛸${(p.settlements||[]).length} 🌌${(p.cities||[]).length}</span>
       </div>
     `;
     wrap.appendChild(div);
@@ -7284,8 +7315,8 @@ function openTradeModal(){
 
   const body = document.getElementById('tradeBody');
   const subtitle = document.getElementById('tradeSubtitle');
-  if(subtitle) subtitle.textContent = `${me.name} · tasas según tus puertos`;
-  body.innerHTML = '<p style="text-align:center;color:var(--ink-dim);margin-bottom:14px">Comercio con el banco · tasas según tus puertos</p>';
+  if(subtitle) subtitle.textContent = `${me.name} · tasas según tus Estaciones Comerciales`;
+  body.innerHTML = '<p style="text-align:center;color:var(--ink-dim);margin-bottom:14px">Comercio en la Estación Galáctica · tasas según tus estaciones</p>';
   const grid = document.createElement('div');
   grid.style.display = 'grid';
   grid.style.gridTemplateColumns = '1fr';
@@ -7333,8 +7364,8 @@ function openTradeModal(){
 }
 
 function openDevCardModal(cardType){
-  const titles = {plenty:'Año de Cosecha', monopoly:'Monopolio'};
-  const subs   = {plenty:'Elige 2 recursos del banco', monopoly:'Elige un recurso para robar a todos'};
+  const titles = {plenty:'Suministro de Energía', monopoly:'Asalto Pirata'};
+  const subs   = {plenty:'Elige 2 recursos del banco galáctico', monopoly:'Elige un recurso para saquear a todos'};
   document.getElementById('devCardModalTitle').textContent = titles[cardType] || cardType;
   document.getElementById('devCardModalSubtitle').textContent = subs[cardType] || '';
   const resOptions = Object.entries(RESOURCE_INFO)
@@ -7356,7 +7387,7 @@ function openDevCardModal(cardType){
   } else {
     body.innerHTML = `
       <div>
-        <div style="font-size:11px;color:var(--ink-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Recurso a monopolizar</div>
+        <div style="font-size:11px;color:var(--ink-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Recurso a saquear</div>
         <select id="monopolyRes" style="width:100%;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:10px;border-radius:6px">${resOptions}</select>
       </div>`;
   }
