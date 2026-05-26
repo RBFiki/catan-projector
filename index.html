@@ -41,19 +41,19 @@
   --green-ok:#27ae60;
   --shadow:0 20px 50px rgba(0,0,0,0.55);
 
-  /* Titanio: acero azulado industrial */
-  --t-forest:#0A1E35;
-  /* Biotech: verde bioluminiscente */
-  --t-pasture:#041C10;
-  /* Energía: ámbar oscuro energético */
-  --t-field:#211400;
-  /* Cristales: violeta cósmico */
-  --t-mountain:#10042C;
-  /* Nanomateriales: rojo óxido profundo */
-  --t-hill:#1E0804;
-  /* Zona Muerta: vacío absoluto */
-  --t-desert:#06050F;
-  --t-sea:#020305;
+  /* Titanio: acero azul medio */
+  --t-forest:#1C3A54;
+  /* Biotech: verde bosque medio */
+  --t-pasture:#0E3820;
+  /* Energía: ámbar profundo */
+  --t-field:#382E00;
+  /* Cristales: violeta índigo */
+  --t-mountain:#1C0C48;
+  /* Nanomateriales: rojo óxido medio */
+  --t-hill:#381008;
+  /* Zona Muerta: vacío oscuro */
+  --t-desert:#0E0C1E;
+  --t-sea:#04060E;
 
   /* Recursos -> colores de cartas */
   --c-wood:#2E6AA0;   /* titanio: azul acero vivo */
@@ -2812,27 +2812,14 @@ function renderBoard(){
     const path = document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d', hexPath(p.x, p.y, STATE.size*0.985));
     path.setAttribute('fill', `url(#tex${cap(h.terrain)})`);
-    path.setAttribute('stroke', 'rgba(0,0,0,0.42)');
+    path.setAttribute('stroke', 'rgba(255,255,255,0.10)');
     path.setAttribute('stroke-width', '1.5');
     g.appendChild(path);
 
-    // Gradiente de profundidad (luz arriba, sombra abajo)
-    const toplight = document.createElementNS('http://www.w3.org/2000/svg','path');
-    toplight.setAttribute('d', hexPath(p.x, p.y, STATE.size*0.985));
-    toplight.setAttribute('fill','url(#hexToplight)');
-    toplight.setAttribute('pointer-events','none');
-    g.appendChild(toplight);
-
-    const vignette = document.createElementNS('http://www.w3.org/2000/svg','path');
-    vignette.setAttribute('d', hexPath(p.x, p.y, STATE.size*0.985));
-    vignette.setAttribute('fill','url(#boardLight)');
-    vignette.setAttribute('pointer-events','none');
-    g.appendChild(vignette);
-
-    // Icono de terreno centrado (único por hex, encima de los gradientes)
-    // scale(1.5) hace que el icono de 60px ocupe 90px, visible alrededor del token de número
+    // Icono de terreno centrado (único por hex)
+    // scale(1.35): 60px × 1.35 = 81px efectivos — visible alrededor del token de número
     const iconG = document.createElementNS('http://www.w3.org/2000/svg','g');
-    iconG.setAttribute('transform', `translate(${p.x},${p.y}) scale(1.5) translate(-30,-30)`);
+    iconG.setAttribute('transform', `translate(${p.x},${p.y}) scale(1.35) translate(-30,-30)`);
     iconG.setAttribute('pointer-events','none');
     iconG.innerHTML = getTerrainIcon(h.terrain);
     g.appendChild(iconG);
@@ -3330,10 +3317,10 @@ function onHexClick(hex){
    transform="translate(px-30, py-30)" sobre cada hex.
 ═══════════════════════════════════════════════════════════════════ */
 
-/* ─── TITANIO ⚙️: engranaje industrial, 8 dientes ─────────────────── */
+/* ─── TITANIO ⚙️: engranaje flat azul acero ───────────────────────── */
 function treeIcons(){return `
-  <circle cx="30" cy="30" r="17" fill="rgba(46,106,160,0.22)" stroke="rgba(80,160,240,0.58)" stroke-width="2"/>
-  <g fill="rgba(100,180,255,0.82)">
+  <circle cx="30" cy="30" r="17" fill="#1A3650" stroke="#5AADFF" stroke-width="1.8"/>
+  <g fill="#5AADFF">
     <rect x="27.5" y="8.5" width="5" height="9" rx="2"/>
     <g transform="rotate(45,30,30)"><rect x="27.5" y="8.5" width="5" height="9" rx="2"/></g>
     <g transform="rotate(90,30,30)"><rect x="27.5" y="8.5" width="5" height="9" rx="2"/></g>
@@ -3343,79 +3330,75 @@ function treeIcons(){return `
     <g transform="rotate(270,30,30)"><rect x="27.5" y="8.5" width="5" height="9" rx="2"/></g>
     <g transform="rotate(315,30,30)"><rect x="27.5" y="8.5" width="5" height="9" rx="2"/></g>
   </g>
-  <circle cx="30" cy="30" r="8" fill="rgba(8,20,38,0.85)" stroke="rgba(80,160,240,0.40)" stroke-width="1.5"/>
-  <circle cx="30" cy="30" r="3.5" fill="rgba(100,180,255,0.80)"/>
+  <circle cx="30" cy="30" r="8" fill="#0C1C2E" stroke="#3A8ECC" stroke-width="1.2"/>
+  <circle cx="30" cy="30" r="3.5" fill="#5AADFF"/>
 `}
 
-/* ─── BIOTECH 🧬: hélice de ADN, dos hebras cruzadas ──────────────── */
+/* ─── BIOTECH 🧬: hélice de ADN flat verde ────────────────────────── */
 function grassIcons(){return `
-  <path d="M22,6 C34,14 26,22 34,30 C42,38 34,46 42,54" stroke="rgba(0,210,110,0.90)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-  <path d="M38,6 C26,14 34,22 26,30 C18,38 26,46 18,54" stroke="rgba(0,210,110,0.55)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-  <line x1="22" y1="12" x2="38" y2="12" stroke="rgba(0,210,110,0.72)" stroke-width="2" stroke-linecap="round"/>
-  <line x1="25" y1="21" x2="35" y2="21" stroke="rgba(0,210,110,0.62)" stroke-width="1.8" stroke-linecap="round"/>
-  <line x1="30" y1="30" x2="30" y2="30" stroke="rgba(0,210,110,0.55)" stroke-width="2" stroke-linecap="round"/>
-  <line x1="26" y1="39" x2="34" y2="39" stroke="rgba(0,210,110,0.62)" stroke-width="1.8" stroke-linecap="round"/>
-  <line x1="22" y1="48" x2="38" y2="48" stroke="rgba(0,210,110,0.72)" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="22" cy="12" r="2.8" fill="rgba(0,210,110,0.88)"/>
-  <circle cx="38" cy="12" r="2.8" fill="rgba(0,210,110,0.88)"/>
-  <circle cx="34" cy="30" r="2.8" fill="rgba(0,210,110,0.75)"/>
-  <circle cx="22" cy="48" r="2.8" fill="rgba(0,210,110,0.88)"/>
-  <circle cx="38" cy="48" r="2.8" fill="rgba(0,210,110,0.88)"/>
+  <path d="M22,6 C34,14 26,22 34,30 C42,38 34,46 42,54" stroke="#22E878" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+  <path d="M38,6 C26,14 34,22 26,30 C18,38 26,46 18,54" stroke="#22E878" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.55"/>
+  <line x1="22" y1="12" x2="38" y2="12" stroke="#22E878" stroke-width="2" stroke-linecap="round"/>
+  <line x1="25" y1="21" x2="35" y2="21" stroke="#22E878" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="26" y1="39" x2="34" y2="39" stroke="#22E878" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="22" y1="48" x2="38" y2="48" stroke="#22E878" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="22" cy="12" r="2.8" fill="#22E878"/>
+  <circle cx="38" cy="12" r="2.8" fill="#22E878"/>
+  <circle cx="34" cy="30" r="2.8" fill="#22E878"/>
+  <circle cx="22" cy="48" r="2.8" fill="#22E878"/>
+  <circle cx="38" cy="48" r="2.8" fill="#22E878"/>
 `}
 
-/* ─── ENERGÍA ⚡: rayo grueso naranja-amarillo con halo ───────────── */
+/* ─── ENERGÍA ⚡: rayo flat oro brillante ─────────────────────────── */
 function wheatIcons(){return `
-  <ellipse cx="30" cy="30" rx="17" ry="22" fill="rgba(255,150,0,0.09)"/>
   <path d="M37,4 L25,27 L33,27 L22,56 L43,23 L33,23 Z"
-    fill="rgba(255,195,0,0.88)" stroke="rgba(255,235,60,0.95)" stroke-width="1.5" stroke-linejoin="round"/>
+    fill="#FFD000" stroke="#FFE840" stroke-width="1.5" stroke-linejoin="round"/>
   <path d="M37,4 L25,27 L33,27 L22,56 L43,23 L33,23 Z"
-    fill="rgba(255,255,160,0.22)"/>
+    fill="#FFFFF0" opacity="0.18"/>
 `}
 
-/* ─── CRISTALES 💎: gema facetada violeta con brillo ─────────────── */
+/* ─── CRISTALES 💎: gema flat violeta ────────────────────────────── */
 function mountainIcons(){return `
   <polygon points="30,5 48,24 41,52 19,52 12,24"
-    fill="rgba(140,60,240,0.30)" stroke="rgba(200,140,255,0.84)" stroke-width="2.2"/>
-  <polygon points="30,5 48,24 30,18"  fill="rgba(225,185,255,0.38)"/>
-  <polygon points="30,5 12,24 30,18"  fill="rgba(160,80,255,0.24)"/>
-  <polygon points="12,24 19,52 30,40" fill="rgba(110,40,220,0.42)"/>
-  <polygon points="48,24 41,52 30,40" fill="rgba(175,95,255,0.32)"/>
-  <polygon points="19,52 41,52 30,40" fill="rgba(88,20,195,0.48)"/>
-  <line x1="30" y1="5"  x2="30" y2="52" stroke="rgba(215,175,255,0.35)" stroke-width="0.8"/>
-  <line x1="12" y1="24" x2="48" y2="24" stroke="rgba(215,175,255,0.45)" stroke-width="1"/>
-  <circle cx="30" cy="10" r="3.2" fill="rgba(255,245,255,0.78)"/>
+    fill="#22104A" stroke="#B070FF" stroke-width="2.2"/>
+  <polygon points="30,5 48,24 30,18"  fill="#C898FF" opacity="0.35"/>
+  <polygon points="30,5 12,24 30,18"  fill="#9850E8" opacity="0.25"/>
+  <polygon points="12,24 19,52 30,40" fill="#7030C0" opacity="0.40"/>
+  <polygon points="48,24 41,52 30,40" fill="#9850E8" opacity="0.30"/>
+  <polygon points="19,52 41,52 30,40" fill="#5010A0" opacity="0.45"/>
+  <line x1="30" y1="5"  x2="30" y2="52" stroke="#C898FF" stroke-width="0.8" opacity="0.4"/>
+  <line x1="12" y1="24" x2="48" y2="24" stroke="#C898FF" stroke-width="1" opacity="0.5"/>
+  <circle cx="30" cy="10" r="3.2" fill="#EED8FF"/>
 `}
 
-/* ─── NANOMATERIALES 🧱: red molecular roja-anaranjada ───────────── */
+/* ─── NANOMATERIALES 🧱: red molecular flat naranja ──────────────── */
 function hillIcons(){return `
-  <circle cx="30" cy="13" r="5.5" fill="rgba(255,70,30,0.80)" stroke="rgba(255,130,70,0.95)" stroke-width="1.8"/>
-  <circle cx="13" cy="41" r="5"   fill="rgba(255,70,30,0.70)" stroke="rgba(255,130,70,0.85)" stroke-width="1.8"/>
-  <circle cx="47" cy="41" r="5"   fill="rgba(255,70,30,0.70)" stroke="rgba(255,130,70,0.85)" stroke-width="1.8"/>
-  <circle cx="22" cy="25" r="3.8" fill="rgba(255,105,50,0.62)" stroke="rgba(255,148,80,0.80)" stroke-width="1.2"/>
-  <circle cx="38" cy="25" r="3.8" fill="rgba(255,105,50,0.62)" stroke="rgba(255,148,80,0.80)" stroke-width="1.2"/>
-  <circle cx="30" cy="47" r="4"   fill="rgba(255,88,38,0.68)" stroke="rgba(255,128,65,0.85)" stroke-width="1.2"/>
-  <line x1="30" y1="18" x2="22" y2="22" stroke="rgba(255,140,80,0.65)" stroke-width="2"/>
-  <line x1="30" y1="18" x2="38" y2="22" stroke="rgba(255,140,80,0.65)" stroke-width="2"/>
-  <line x1="19" y1="29" x2="15" y2="37" stroke="rgba(255,120,65,0.58)" stroke-width="2"/>
-  <line x1="41" y1="29" x2="45" y2="37" stroke="rgba(255,120,65,0.58)" stroke-width="2"/>
-  <line x1="21" y1="28" x2="29" y2="44" stroke="rgba(255,110,60,0.50)" stroke-width="1.7"/>
-  <line x1="39" y1="28" x2="31" y2="44" stroke="rgba(255,110,60,0.50)" stroke-width="1.7"/>
-  <line x1="17" y1="44" x2="27" y2="48" stroke="rgba(255,105,55,0.44)" stroke-width="1.6"/>
-  <line x1="43" y1="44" x2="33" y2="48" stroke="rgba(255,105,55,0.44)" stroke-width="1.6"/>
+  <circle cx="30" cy="13" r="5.5" fill="#FF5820" stroke="#FF8050" stroke-width="1.8"/>
+  <circle cx="13" cy="41" r="5"   fill="#FF5820" stroke="#FF8050" stroke-width="1.8"/>
+  <circle cx="47" cy="41" r="5"   fill="#FF5820" stroke="#FF8050" stroke-width="1.8"/>
+  <circle cx="22" cy="25" r="3.8" fill="#FF6830" stroke="#FF9060" stroke-width="1.2"/>
+  <circle cx="38" cy="25" r="3.8" fill="#FF6830" stroke="#FF9060" stroke-width="1.2"/>
+  <circle cx="30" cy="47" r="4"   fill="#FF6030" stroke="#FF8848" stroke-width="1.2"/>
+  <line x1="30" y1="18" x2="22" y2="22" stroke="#FF7040" stroke-width="2"/>
+  <line x1="30" y1="18" x2="38" y2="22" stroke="#FF7040" stroke-width="2"/>
+  <line x1="19" y1="29" x2="15" y2="37" stroke="#FF6030" stroke-width="2"/>
+  <line x1="41" y1="29" x2="45" y2="37" stroke="#FF6030" stroke-width="2"/>
+  <line x1="21" y1="28" x2="29" y2="44" stroke="#FF5820" stroke-width="1.7"/>
+  <line x1="39" y1="28" x2="31" y2="44" stroke="#FF5820" stroke-width="1.7"/>
+  <line x1="17" y1="44" x2="27" y2="48" stroke="#FF5018" stroke-width="1.6"/>
+  <line x1="43" y1="44" x2="33" y2="48" stroke="#FF5018" stroke-width="1.6"/>
 `}
 
-/* ─── ZONA MUERTA ☠: cráneo con cuencas oculares ────────────────── */
+/* ─── ZONA MUERTA ☠: cráneo flat violeta ────────────────────────── */
 function desertIcons(){return `
-  <ellipse cx="30" cy="27" rx="16" ry="17" fill="rgba(70,50,115,0.48)" stroke="rgba(155,125,220,0.72)" stroke-width="2"/>
-  <ellipse cx="30" cy="43" rx="11" ry="6.5" fill="rgba(55,38,95,0.44)" stroke="rgba(140,110,200,0.55)" stroke-width="1.5"/>
-  <circle cx="23" cy="27" r="5" fill="rgba(6,5,14,0.92)"/>
-  <circle cx="37" cy="27" r="5" fill="rgba(6,5,14,0.92)"/>
-  <path d="M27,38 L29,34 L31,37 L33,34 L35,38" stroke="rgba(140,110,200,0.58)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <circle cx="10" cy="10" r="1.5" fill="rgba(210,210,255,0.62)"/>
-  <circle cx="30" cy="7"  r="1"   fill="rgba(210,210,255,0.50)"/>
-  <circle cx="50" cy="12" r="1.8" fill="rgba(210,210,255,0.58)"/>
-  <circle cx="51" cy="32" r="1.2" fill="rgba(210,210,255,0.48)"/>
-  <circle cx="9"  cy="28" r="1"   fill="rgba(210,210,255,0.42)"/>
+  <ellipse cx="30" cy="27" rx="16" ry="17" fill="#1A1240" stroke="#8860CC" stroke-width="2"/>
+  <ellipse cx="30" cy="43" rx="11" ry="6.5" fill="#14102E" stroke="#7050AA" stroke-width="1.5"/>
+  <circle cx="23" cy="27" r="5" fill="#0A0818"/>
+  <circle cx="37" cy="27" r="5" fill="#0A0818"/>
+  <path d="M27,38 L29,34 L31,37 L33,34 L35,38" stroke="#8860CC" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <circle cx="10" cy="10" r="1.5" fill="#C8C8FF" opacity="0.65"/>
+  <circle cx="30" cy="7"  r="1"   fill="#C8C8FF" opacity="0.50"/>
+  <circle cx="50" cy="12" r="1.8" fill="#C8C8FF" opacity="0.58"/>
 `}
 
 /* ─── HELPER: terreno → icono SVG ────────────────────────────────── */
