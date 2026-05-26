@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: catan-relay
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python serve.py
+    healthCheckPath: /

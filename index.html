@@ -1442,6 +1442,7 @@ const STATE = {
   pairCode: null,
   myDeviceId: null,
   myPlayerId: null,          // solo en modo remote
+  wsRelayUrl: null,          // URL del relay WebSocket en la nube (wss://...)
 };
 
 /* =============== MÓDULO 6: GENERACIÓN DE CARTAS DESARROLLO ================ */
@@ -3335,6 +3336,9 @@ function initSyncBoard(){
 function initSyncRemote(code){
   STATE.pairCode = code;
   storageKey = 'catan-sync-' + code;
+  // Leer relay URL inyectada en el QR
+  const wsParam = new URLSearchParams(location.search).get('ws');
+  if(wsParam){ STATE.wsRelayUrl = wsParam; localStorage.setItem('catanWsRelay', wsParam); }
   bcastChannel = new BroadcastChannel('catan-' + code);
   bcastChannel.onmessage = (ev)=> handleSyncMessage(ev.data);
 
@@ -3364,8 +3368,23 @@ function initSyncRemote(code){
 }
 
 function initWebSocket(code, role){
-  if(location.protocol !== 'http:') return;
-  const wsUrl = `ws://${location.hostname}:9765`;
+  // Determinar URL del relay
+  const h = location.hostname;
+  const isLocal = h==='localhost'||h==='127.0.0.1'
+    ||/^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[01])\./.test(h);
+  let wsUrl;
+  if(isLocal){
+    wsUrl = `ws://${h}:9765`;
+  } else {
+    // En HTTPS: buscar relay configurado en STATE, localStorage o param URL
+    wsUrl = STATE.wsRelayUrl
+      || localStorage.getItem('catanWsRelay')
+      || new URLSearchParams(location.search).get('ws')
+      || null;
+    if(!wsUrl) return;  // sin relay configurado → no hay WS en HTTPS
+    STATE.wsRelayUrl = wsUrl;
+    localStorage.setItem('catanWsRelay', wsUrl);
+  }
   function connect(){
     try{
       const ws = new WebSocket(wsUrl);
@@ -6163,13 +6182,26 @@ function openPairModal(){
   pc.textContent = STATE.pairCode.split('').join(' ');
 
   const isFileProtocol = window.location.protocol === 'file:';
+  const isHttps = window.location.protocol === 'https:';
   const isLocalhost = ['localhost','127.0.0.1','0.0.0.0'].includes(window.location.hostname);
   const host = window.location.host;
 
-  // Construir URL para celular
+  // Relay URL configurado (STATE, localStorage o param URL)
+  const relayUrl = STATE.wsRelayUrl
+    || localStorage.getItem('catanWsRelay')
+    || new URLSearchParams(location.search).get('ws')
+    || '';
+  if(relayUrl && !STATE.wsRelayUrl){
+    STATE.wsRelayUrl = relayUrl;
+    localStorage.setItem('catanWsRelay', relayUrl);
+  }
+
+  // Construir URL para celular (incluye ws= si hay relay)
   const u = new URL(window.location.href);
   u.searchParams.set('remote','1');
   u.searchParams.set('code', STATE.pairCode);
+  u.searchParams.delete('ws');
+  if(relayUrl) u.searchParams.set('ws', relayUrl);
   const fullUrl = u.toString();
 
   const urlBox = document.getElementById('pairUrlBox');
@@ -6178,54 +6210,81 @@ function openPairModal(){
   const canvas = document.getElementById('qrCanvas');
 
   if(isFileProtocol){
-    // CASO 1: archivo local - QR no sirve para celular físico
+    // CASO 1: archivo local
     qrWrap.style.opacity = '0.25';
     qrWrap.style.filter = 'grayscale(1)';
-    // Dibujar un QR igual (apunta al file:// pero solo sirve dentro del mismo navegador)
     drawQR(canvas, fullUrl);
-
     urlBox.innerHTML = `URL: <span style="color:var(--ink-dim);font-size:10px;word-break:break-all">${fullUrl}</span>`;
-
     instr.innerHTML = `
       <div style="background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.3);border-radius:8px;padding:12px;margin-bottom:12px">
         <strong style="color:#ffb7b0">⚠ Archivo local detectado</strong><br>
         El celular no puede escanear este QR porque la URL es <code style="background:rgba(0,0,0,0.4);padding:2px 4px;border-radius:3px;font-size:11px">file://</code>, no una dirección de red.
       </div>
-
-      <strong style="color:var(--gold-soft)">Opciones para usar el celular:</strong>
-
-      <div style="margin-top:10px"><strong>A) Demo rápida (mismo navegador):</strong></div>
-      <div style="margin-left:10px;font-size:11px">Abre otra pestaña en este mismo navegador y pega la URL completa de arriba. Funciona inmediato vía <code>BroadcastChannel</code>.</div>
-
-      <div style="margin-top:10px"><strong>B) Servidor local en tu wifi (recomendado):</strong></div>
+      <strong style="color:var(--gold-soft)">Opciones:</strong>
+      <div style="margin-top:10px"><strong>A) Mismo navegador:</strong></div>
+      <div style="margin-left:10px;font-size:11px">Abre otra pestaña y pega la URL de arriba.</div>
+      <div style="margin-top:10px"><strong>B) Servidor local en tu wifi:</strong></div>
       <div style="margin-left:10px;font-size:11px">
-        Abre una terminal en la carpeta del archivo y ejecuta uno de estos comandos:
-        <div style="background:rgba(0,0,0,0.4);padding:8px;border-radius:4px;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold-soft);line-height:1.8">
-          python3 -m http.server 8080<br>
-          <span style="color:var(--ink-dim)"># o:</span><br>
-          npx serve -p 8080
-        </div>
-        Luego abre <code>http://[IP-DE-TU-PC]:8080</code> y el QR sí funcionará.
+        <div style="background:rgba(0,0,0,0.4);padding:8px;border-radius:4px;margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold-soft)">python3 serve.py</div>
+        Luego abre <code>http://[IP]:9080/index.html</code>
       </div>
+      <div style="margin-top:10px"><strong>C) Online:</strong></div>
+      <div style="margin-left:10px;font-size:11px">Abre <a href="https://rbfiki.github.io/catan-projector/" target="_blank" style="color:var(--gold-soft)">rbfiki.github.io/catan-projector</a> y configura el relay.</div>
+    `;
 
-      <div style="margin-top:10px"><strong>C) Subir a hosting gratis:</strong></div>
-      <div style="margin-left:10px;font-size:11px">Sube el HTML a Vercel, Netlify o GitHub Pages y abre desde la URL pública. Funciona desde cualquier celular en cualquier red.</div>
-
-      <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-dim)">
-        💡 El código de 6 dígitos también puede ingresarse manualmente en el celular si está abierto en la misma página.
+  } else if(isHttps && !relayUrl){
+    // CASO 2: GitHub Pages sin relay configurado
+    qrWrap.style.opacity = '0.35';
+    qrWrap.style.filter = 'grayscale(1)';
+    drawQR(canvas, fullUrl);
+    urlBox.innerHTML = '';
+    instr.innerHTML = `
+      <div style="background:rgba(217,180,106,0.12);border:1px solid rgba(217,180,106,0.4);border-radius:8px;padding:14px;margin-bottom:12px">
+        <strong style="color:var(--gold-soft)">⚡ Configura tu relay online</strong>
+        <div style="font-size:11px;color:var(--ink-dim);margin-top:5px;line-height:1.6">
+          Para jugar desde <strong>cualquier red</strong> necesitas un servidor relay WebSocket.<br>
+          Despliégalo gratis en <a href="https://render.com" target="_blank" style="color:var(--gold-soft)">Render.com</a> con el repo de GitHub y pega la URL aquí:
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="relayUrlInput" type="text" placeholder="wss://catan-relay.onrender.com"
+          style="flex:1;background:var(--bg-1);color:var(--ink);border:1px solid rgba(217,180,106,0.4);
+                 padding:9px 11px;border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;outline:none">
+        <button class="btn primary" onclick="saveRelayUrl()" style="padding:9px 16px;font-size:12px;white-space:nowrap">Conectar</button>
+      </div>
+      <div style="font-size:10px;color:var(--ink-dim);line-height:1.5">
+        Pasos: 1) <a href="https://render.com" target="_blank" style="color:var(--gold-soft)">render.com</a> → New Web Service → conecta el repo GitHub <code>RBFiki/catan-projector</code>
+        → nombre el servicio <code>catan-relay</code> → Deploy.<br>
+        2) Copia la URL <code>wss://catan-relay.onrender.com</code> y pégala arriba.
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-dim)">
+        💡 Alternativa: misma WiFi → <code>python3 serve.py</code> en tu PC y accede via <code>http://[IP]:9080</code>
       </div>
     `;
+
   } else {
-    // CASO 2: servidor real - QR funcional
+    // CASO 3: servidor activo (local o HTTPS con relay)
     qrWrap.style.opacity = '1';
     qrWrap.style.filter = 'none';
     drawQR(canvas, fullUrl);
+    urlBox.innerHTML = `<span style="word-break:break-all;font-size:10px;color:var(--gold-soft)">${fullUrl}</span>`;
 
-    urlBox.innerHTML = `URL: <span style="color:var(--gold-soft);word-break:break-all">${fullUrl}</span>`;
-
-    const hostLabel = isLocalhost
-      ? `<strong style="color:#ffd07a">⚠ Servidor en localhost</strong> · Funciona en el mismo dispositivo. Para escanear desde tu celular, accede usando la IP de red de tu PC (ej: <code>http://192.168.x.x:${window.location.port||'80'}</code>) en lugar de <code>localhost</code>.`
-      : `<strong style="color:#a8e7b8">✓ Servidor en red activa</strong> · Conecta tu celular a la misma wifi (<code>${host}</code>) y escanea el QR.`;
+    let hostLabel;
+    if(relayUrl){
+      hostLabel = `
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <strong style="color:#a8e7b8">✓ Relay online activo</strong>
+          <code style="font-size:10px;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:3px;word-break:break-all">${relayUrl}</code>
+        </div>
+        <div style="font-size:11px;color:var(--ink-dim);margin-top:4px">
+          Los celulares se conectan desde <strong>cualquier red</strong>.
+          <button onclick="clearRelayUrl()" style="background:none;border:none;color:var(--gold-soft);cursor:pointer;font-size:10px;text-decoration:underline;padding:0;margin-left:4px">Cambiar relay</button>
+        </div>`;
+    } else if(isLocalhost){
+      hostLabel = `<strong style="color:#ffd07a">⚠ Localhost</strong> · Funciona en este dispositivo. Para celulares usa la IP de red de tu PC.`;
+    } else {
+      hostLabel = `<strong style="color:#a8e7b8">✓ Red activa</strong> · Misma wifi (<code>${host}</code>) — escanea el QR.`;
+    }
 
     instr.innerHTML = `
       <div style="background:rgba(20,26,35,0.6);border:1px solid var(--line);border-radius:8px;padding:12px">
@@ -6238,6 +6297,26 @@ function openPairModal(){
   }
 
   document.getElementById('pairModal').classList.remove('hidden');
+}
+
+function saveRelayUrl(){
+  let url = (document.getElementById('relayUrlInput')?.value || '').trim();
+  if(!url) return;
+  // Auto-corregir https/http → wss/ws
+  if(url.startsWith('https://')) url = 'wss://' + url.slice(8);
+  else if(url.startsWith('http://'))  url = 'ws://'  + url.slice(7);
+  STATE.wsRelayUrl = url;
+  localStorage.setItem('catanWsRelay', url);
+  // Reconectar con el nuevo relay
+  if(STATE.pairCode) initWebSocket(STATE.pairCode, 'board');
+  // Refrescar modal
+  openPairModal();
+}
+
+function clearRelayUrl(){
+  STATE.wsRelayUrl = null;
+  localStorage.removeItem('catanWsRelay');
+  openPairModal();
 }
 
 /* =============== MÓDULO 23: SETUP DE JUGADORES (lobby) ================ */

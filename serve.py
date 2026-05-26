@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-Catán Projector — servidor local
-  HTTP  :8080  → sirve index.html a los celulares
-  WS    :8765  → relay en tiempo real entre tablero y controles remotos
+Catán Projector — servidor / relay WebSocket
 
-Uso:
+Modos de operación:
+  LOCAL  → HTTP en :9080  +  WebSocket en :9765
+  NUBE   → solo WebSocket en el puerto dado por la variable PORT (Render, Railway, Fly.io...)
+
+Uso local:
   python3 serve.py
+  Abre en el proyector:  http://[IP-de-esta-PC]:9080/index.html
 
-Luego abre en el navegador del proyector:
-  http://[IP-de-esta-PC]:8080/index.html
-
-Los celulares escanean el QR y se conectan automáticamente.
+Uso en la nube (Render / Railway):
+  La plataforma inyecta PORT automáticamente.
+  El frontend se sirve desde GitHub Pages; este proceso solo hace relay WS.
 """
 import asyncio
 import json
@@ -23,9 +25,10 @@ from collections import defaultdict
 
 import websockets
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT      = os.path.dirname(os.path.abspath(__file__))
+IS_CLOUD  = 'PORT' in os.environ          # Render / Railway / Fly inyectan PORT
 HTTP_PORT = 9080
-WS_PORT   = 9765
+WS_PORT   = int(os.environ.get('PORT', 9765))
 
 rooms: dict = defaultdict(set)  # code → set of websocket connections
 
@@ -68,7 +71,7 @@ async def relay(ws):
                 room_code = str(msg.get("code", ""))
                 rooms[room_code].add(ws)
                 n = len(rooms[room_code])
-                print(f"  join  room={room_code}  peers={n}")
+                print(f"  join  room={room_code}  peers={n}", flush=True)
                 continue
 
             if room_code is None:
@@ -92,19 +95,31 @@ async def relay(ws):
 async def main():
     ip = get_local_ip()
 
-    threading.Thread(target=run_http, daemon=True).start()
+    if not IS_CLOUD:
+        threading.Thread(target=run_http, daemon=True).start()
 
-    async with websockets.serve(relay, "0.0.0.0", WS_PORT, ping_interval=20, ping_timeout=60):
-        print("=" * 50)
-        print("  Catán Projector — servidor local")
-        print("=" * 50)
-        print(f"  Abre en el proyector/PC:")
-        print(f"    http://{ip}:{HTTP_PORT}/index.html")
-        print()
-        print(f"  Los celulares escanean el QR automáticamente.")
-        print(f"  (Deben estar en la misma red wifi)")
-        print("=" * 50)
-        print()
+    async with websockets.serve(
+        relay, "0.0.0.0", WS_PORT,
+        ping_interval=20, ping_timeout=60
+    ):
+        if IS_CLOUD:
+            print("=" * 50, flush=True)
+            print("  Catán Projector — WebSocket Relay (nube)", flush=True)
+            print("=" * 50, flush=True)
+            print(f"  Puerto: {WS_PORT}", flush=True)
+            print(f"  Estado: listo para conexiones wss://", flush=True)
+            print("=" * 50, flush=True)
+        else:
+            print("=" * 50)
+            print("  Catán Projector — servidor local")
+            print("=" * 50)
+            print(f"  Abre en el proyector/PC:")
+            print(f"    http://{ip}:{HTTP_PORT}/index.html")
+            print()
+            print(f"  Los celulares escanean el QR automáticamente.")
+            print(f"  (Deben estar en la misma red wifi)")
+            print("=" * 50)
+            print()
 
         await asyncio.Future()
 
