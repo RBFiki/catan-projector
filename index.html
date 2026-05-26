@@ -238,7 +238,7 @@ body.board .remote-only{display:none !important}
   margin-bottom:14px;
 }
 .turn-banner .tplayer{display:flex;align-items:center;gap:10px}
-.turn-banner .tdot{width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.3)}
+.turn-banner .tdot{width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center}
 .turn-banner .tname{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--ink)}
 .turn-banner .tphase{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold-soft);margin-top:2px}
 
@@ -323,17 +323,25 @@ body.board .remote-only{display:none !important}
 }
 #board.placing-settlement .vertex-spot.valid circle,
 #board.placing-city .vertex-spot.valid circle{
-  fill:rgba(217,180,106,0.5);stroke:var(--gold);stroke-width:2;
-  animation:pulse 1.6s ease-in-out infinite;
+  fill:rgba(217,180,106,0.35);stroke:var(--gold);stroke-width:2.5;
+  animation:pulse 1.4s ease-in-out infinite;
 }
 #board.placing-road .edge-spot.valid line{
   stroke:var(--gold);stroke-width:6;opacity:0.7;
-  animation:pulse 1.6s ease-in-out infinite;
+  animation:pulse 1.4s ease-in-out infinite;
 }
+#board.placing-settlement,
+#board.placing-city { cursor:crosshair; }
 @keyframes pulse{
-  0%,100%{opacity:0.6}
+  0%,100%{opacity:0.5}
   50%{opacity:1}
 }
+/* Cursor targeting ring */
+#gCursor circle { transition:r .1s, stroke .1s; }
+@keyframes cursorSpin{
+  from{stroke-dashoffset:0} to{stroke-dashoffset:-32}
+}
+#gCursor { pointer-events:none; }
 
 /* Banner de información sobre el tablero */
 #stageOverlay{
@@ -346,7 +354,7 @@ body.board .remote-only{display:none !important}
 }
 #stageOverlay.hidden{opacity:0}
 #stageOverlay .so-player{display:flex;align-items:center;gap:8px}
-#stageOverlay .so-dot{width:14px;height:14px;border-radius:50%}
+#stageOverlay .so-dot{width:22px;height:22px;flex:0 0 22px;display:flex;align-items:center;justify-content:center}
 #stageOverlay .so-name{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--gold-soft)}
 #stageOverlay .so-phase{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-dim);padding-left:12px;border-left:1px solid var(--line)}
 
@@ -453,8 +461,9 @@ body.board.projector #projectorScoreboard{display:flex}
   background:var(--bg-1);
 }
 .psr-dot{
-  width:24px;height:24px;border-radius:50%;flex:0 0 24px;cursor:pointer;
+  width:28px;height:28px;border-radius:50%;flex:0 0 28px;cursor:pointer;
   border:2px solid transparent;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
 }
 .psr-dot.dimmed{opacity:.3}
 .psr-input{
@@ -1713,6 +1722,48 @@ const PLAYER_COLORS = {
   brown:  {hex:'#6b3e1f', name:'Marrón'},
 };
 
+const SPACE_BOT_NAMES = [
+  'NOVA-7','ORIÓN','ASTRA','MAVERICK','RIPLEY','ROCKET',
+  'NEBULA','LYRA','TITAN','VEGA','PULSAR','QUASAR'
+];
+let _spaceBotIdx = 0;
+function nextSpaceBotName(){
+  const n = SPACE_BOT_NAMES[_spaceBotIdx % SPACE_BOT_NAMES.length];
+  _spaceBotIdx++;
+  return n;
+}
+
+/* Renders a mini astronaut helmet SVG for the player avatar */
+function astronautSVG(colorHex, sz){
+  sz = sz || 32;
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0">
+    <!-- Neck collar -->
+    <rect x="11" y="25.5" width="10" height="5.5" rx="2.5" fill="${colorHex}" opacity="0.85"/>
+    <rect x="11" y="25.5" width="10" height="5.5" rx="2.5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+    <!-- Helmet shell with shading -->
+    <ellipse cx="16" cy="15" rx="12.5" ry="13" fill="${colorHex}"/>
+    <ellipse cx="11" cy="9" rx="5" ry="3.2" fill="rgba(255,255,255,0.18)" transform="rotate(-22 11 9)"/>
+    <ellipse cx="21" cy="22" rx="4.5" ry="3" fill="rgba(0,0,0,0.22)" transform="rotate(-22 21 22)"/>
+    <!-- Visor dark faceplate -->
+    <ellipse cx="16" cy="15" rx="8.2" ry="9" fill="#050a16"/>
+    <!-- Stars in visor -->
+    <circle cx="19" cy="13" r="0.7" fill="rgba(255,255,255,0.55)"/>
+    <circle cx="13" cy="11.5" r="0.5" fill="rgba(255,255,255,0.45)"/>
+    <circle cx="20.5" cy="18" r="0.4" fill="rgba(255,255,255,0.35)"/>
+    <circle cx="14" cy="19.5" r="0.6" fill="rgba(255,255,255,0.4)"/>
+    <circle cx="17" cy="10" r="0.35" fill="rgba(255,255,255,0.3)"/>
+    <!-- Visor reflection glint -->
+    <ellipse cx="12" cy="10.5" rx="2.8" ry="1.5" fill="rgba(255,255,255,0.22)" transform="rotate(-25 12 10.5)"/>
+    <!-- Visor border ring -->
+    <ellipse cx="16" cy="15" rx="8.2" ry="9" fill="none" stroke="rgba(255,255,255,0.32)" stroke-width="1.2"/>
+    <!-- Helmet outer border -->
+    <ellipse cx="16" cy="15" rx="12.5" ry="13" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="0.8"/>
+    <!-- Antenna -->
+    <line x1="16" y1="2.2" x2="16" y2="5.8" stroke="rgba(255,255,255,0.5)" stroke-width="1.3" stroke-linecap="round"/>
+    <circle cx="16" cy="1.8" r="1.6" fill="rgba(255,255,255,0.7)"/>
+  </svg>`;
+}
+
 /* =============== MÓDULO 3: VERTEX & EDGE SYSTEM ================
    Cada hexágono tiene 6 vértices y 6 aristas.
    Usamos coordenadas canónicas:
@@ -2861,9 +2912,26 @@ function renderBoard(){
   gVerts.setAttribute('id','gVerts');
   gBoard.appendChild(gVerts);
 
+  // Cursor targeting ring (shown during vertex placement)
+  const gCursor = document.createElementNS('http://www.w3.org/2000/svg','g');
+  gCursor.setAttribute('id','gCursor');
+  gCursor.setAttribute('pointer-events','none');
+  gCursor.style.display = 'none';
+  gCursor.innerHTML = `
+    <circle id="cursorRingOuter" cx="0" cy="0" r="18" fill="none"
+      stroke="rgba(217,180,106,0.5)" stroke-width="1.5" stroke-dasharray="5 3"/>
+    <line x1="-25" y1="0" x2="-14" y2="0" stroke="rgba(217,180,106,0.5)" stroke-width="1" stroke-linecap="round"/>
+    <line x1="14" y1="0" x2="25" y2="0" stroke="rgba(217,180,106,0.5)" stroke-width="1" stroke-linecap="round"/>
+    <line x1="0" y1="-25" x2="0" y2="-14" stroke="rgba(217,180,106,0.5)" stroke-width="1" stroke-linecap="round"/>
+    <line x1="0" y1="14" x2="0" y2="25" stroke="rgba(217,180,106,0.5)" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="2" fill="rgba(217,180,106,0.55)"/>
+  `;
+  gBoard.appendChild(gCursor);
+
   renderInteractiveSpots();
   renderBuildings();
   updateProbabilityGrid();
+  setupBoardCursor();
 }
 
 /* Asigna tipos a los puertos respetando proporciones oficiales de Catan
@@ -3204,14 +3272,14 @@ function renderInteractiveSpots(){
     // Hitbox invisible
     const hit = document.createElementNS('http://www.w3.org/2000/svg','circle');
     hit.setAttribute('cx',v.x);hit.setAttribute('cy',v.y);
-    hit.setAttribute('r','12');
+    hit.setAttribute('r','22');
     hit.setAttribute('fill','transparent');
     g.appendChild(hit);
 
     // Círculo visible (solo aparece si es válido)
     const vis = document.createElementNS('http://www.w3.org/2000/svg','circle');
     vis.setAttribute('cx',v.x);vis.setAttribute('cy',v.y);
-    vis.setAttribute('r','8');
+    vis.setAttribute('r','14');
     vis.setAttribute('fill','transparent');
     vis.setAttribute('stroke','transparent');
     g.appendChild(vis);
@@ -3232,6 +3300,71 @@ function renderInteractiveSpots(){
     });
 
     gVerts.appendChild(g);
+  });
+}
+
+/* Cursor targeting ring — follows mouse, snaps to nearest valid vertex */
+function setupBoardCursor(){
+  const svg = document.getElementById('board');
+  if(!svg || svg._cursorSetup) return;
+  svg._cursorSetup = true;
+
+  svg.addEventListener('mousemove', (e)=>{
+    const gCursorEl = document.getElementById('gCursor');
+    const gBoardEl  = document.getElementById('gBoard');
+    if(!gCursorEl || !gBoardEl) return;
+
+    const action = STATE.pendingAction;
+    if(!action || (action.type!=='place-settlement' && action.type!=='place-city')){
+      gCursorEl.style.display = 'none';
+      return;
+    }
+
+    // Convert screen → gBoard local space (= hexToPixel space)
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    let localP;
+    try { localP = pt.matrixTransform(gBoardEl.getScreenCTM().inverse()); }
+    catch(err){ return; }
+
+    // Snap to nearest valid vertex within 42px
+    let best = null, bestD = 42;
+    const gVertsEl = document.getElementById('gVerts');
+    if(gVertsEl && STATE.vertices){
+      STATE.vertices.forEach(v=>{
+        const vEl = gVertsEl.querySelector(`[data-id="${v.id}"]`);
+        if(!vEl || !vEl.classList.contains('valid')) return;
+        const d = Math.hypot(localP.x - v.x, localP.y - v.y);
+        if(d < bestD){ bestD = d; best = v; }
+      });
+    }
+
+    const tx = best ? best.x : localP.x;
+    const ty = best ? best.y : localP.y;
+
+    gCursorEl.style.display = '';
+    gCursorEl.setAttribute('transform', `translate(${tx},${ty})`);
+
+    // Update ring appearance based on snap state
+    const ring = document.getElementById('cursorRingOuter');
+    if(ring){
+      if(best){
+        ring.setAttribute('r','15');
+        ring.setAttribute('stroke','rgba(217,180,106,0.95)');
+        ring.setAttribute('stroke-width','2.2');
+        ring.removeAttribute('stroke-dasharray');
+      } else {
+        ring.setAttribute('r','18');
+        ring.setAttribute('stroke','rgba(217,180,106,0.45)');
+        ring.setAttribute('stroke-width','1.5');
+        ring.setAttribute('stroke-dasharray','5 3');
+      }
+    }
+  });
+
+  svg.addEventListener('mouseleave', ()=>{
+    const gCursorEl = document.getElementById('gCursor');
+    if(gCursorEl) gCursorEl.style.display = 'none';
   });
 }
 
@@ -3459,11 +3592,12 @@ function renderPlayersList(){
       ${isActive?'box-shadow:0 0 0 1px var(--gold), 0 6px 16px rgba(217,180,106,0.12);background:linear-gradient(180deg, rgba(217,180,106,0.08), rgba(217,180,106,0.02));':''}
     `;
 
-    // Header: dot, nombre, conexión, PV
+    // Header: astronaut avatar, nombre, conexión, PV
     const header = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <div style="width:18px;height:18px;border-radius:50%;background:${PLAYER_COLORS[p.color].hex};border:1.5px solid rgba(255,255,255,0.2);flex:0 0 18px;position:relative">
-          ${p.connected?'<div style="position:absolute;right:-2px;bottom:-2px;width:7px;height:7px;border-radius:50%;background:var(--green-ok);border:1.5px solid var(--bg-1)"></div>':''}
+        <div style="width:30px;height:30px;flex:0 0 30px;position:relative">
+          ${astronautSVG(PLAYER_COLORS[p.color].hex, 30)}
+          ${p.connected?'<div style="position:absolute;right:-2px;bottom:-2px;width:8px;height:8px;border-radius:50%;background:var(--green-ok);border:1.5px solid var(--bg-1)"></div>':''}
         </div>
         <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${p.name}${p.isBot?`<span style="font-size:9px;color:rgba(255,255,255,0.35);margin-left:4px">${{easy:'😴',medium:'🤖',hard:'💀'}[p.botDifficulty||'medium']}</span>`:''}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold-soft);font-weight:600">${totalVP}<span style="font-size:9px;color:var(--ink-dim);margin-left:2px">/${STATE.targetVP||10}</span></div>
@@ -3746,7 +3880,8 @@ function renderTurnBanner(){
     'robber':'mover Space Pirate',
     'gameover':'fin del juego'
   };
-  ['turnDot','soOverlayDot'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.background=PLAYER_COLORS[me.color].hex;});
+  const _astSz = {turnDot:34, soOverlayDot:22};
+  ['turnDot','soOverlayDot'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=astronautSVG(PLAYER_COLORS[me.color].hex, _astSz[id]||28);});
   ['turnName','soOverlayName'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=me.name;});
   ['turnPhase','soOverlayPhase'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=phaseLabels[STATE.phase]||STATE.phase;});
 
@@ -8058,10 +8193,10 @@ const SETUP = {
   gameType: 'full',
   targetVP: 10,
   players: [
-    {color:'red',    name:'Tú',        isBot:false, botDifficulty:'medium'},
-    {color:'blue',   name:'Bot Azul',  isBot:true,  botDifficulty:'medium'},
-    {color:'white',  name:'Bot Blanco',isBot:true,  botDifficulty:'medium'},
-    {color:'orange', name:'Bot Naran.',isBot:true,  botDifficulty:'medium'},
+    {color:'red',    name:'Tú',       isBot:false, botDifficulty:'medium'},
+    {color:'blue',   name:'NOVA-7',   isBot:true,  botDifficulty:'medium'},
+    {color:'white',  name:'ORIÓN',    isBot:true,  botDifficulty:'medium'},
+    {color:'orange', name:'ASTRA',    isBot:true,  botDifficulty:'medium'},
   ]
 };
 
@@ -8077,7 +8212,7 @@ function renderPlayerSetup(){
     const diffColors = {easy:'rgba(34,197,94,0.5)', medium:'rgba(251,191,36,0.6)', hard:'rgba(239,68,68,0.6)'};
     const diffBg    = {easy:'rgba(34,197,94,0.1)',  medium:'rgba(251,191,36,0.1)', hard:'rgba(239,68,68,0.1)'};
     row.innerHTML = `
-      <div class="psr-dot" data-i="${i}" style="background:${PLAYER_COLORS[p.color].hex}"></div>
+      <div class="psr-dot" data-i="${i}" title="Cambiar color">${astronautSVG(PLAYER_COLORS[p.color].hex, 26)}</div>
       <input class="psr-input" data-i="${i}" type="text" value="${p.name}" style="flex:1;min-width:0"/>
       <button class="psr-bot" data-i="${i}" title="${botActive?'Convertir en humano':'Convertir en bot'}"
         style="padding:3px 7px;border-radius:5px;border:1px solid ${botActive?'rgba(34,197,94,0.6)':'rgba(255,255,255,0.15)'};background:${botActive?'rgba(34,197,94,0.18)':'rgba(255,255,255,0.05)'};color:${botActive?'#4ade80':'rgba(255,255,255,0.45)'};cursor:pointer;font-size:12px;line-height:1;white-space:nowrap">
@@ -8184,7 +8319,7 @@ function bindBoardEvents(){
     if(SETUP.players.length>=max){toast('Máximo '+max+' jugadores',true); return;}
     const used = SETUP.players.map(p=>p.color);
     const free = Object.keys(PLAYER_COLORS).find(c=>!used.includes(c))||'red';
-    SETUP.players.push({color:free, name:'Bot '+PLAYER_COLORS[free].name, isBot:true});
+    SETUP.players.push({color:free, name:nextSpaceBotName(), isBot:true});
     renderPlayerSetup();
   };
   document.getElementById('btnStartGame').onclick = ()=>{
