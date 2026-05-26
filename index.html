@@ -1218,6 +1218,16 @@ body.remote .toast-item{
   ============================================================ -->
   <div class="remote-only" id="remoteRoot">
 
+    <!-- Panel de selección de jugador (visible al conectar, antes de asignación) -->
+    <div id="rPlayerSelectPanel" style="display:none;padding:24px 16px">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:28px;margin-bottom:8px">🎮</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold-soft);margin-bottom:4px">¿Quién eres?</div>
+        <div style="font-size:13px;color:var(--ink-dim)">Elige tu jugador en la partida</div>
+      </div>
+      <div id="rPlayerSelectList" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
     <div class="remote-head">
       <div class="me">
         <div class="me-dot" id="rMeDot"></div>
@@ -1782,6 +1792,7 @@ function startGame(opts){
     devCards:[], devCardsBoughtThisTurn:[],
     settlements:[], cities:[], roads:[],
     knightsPlayed:0, longestRoad:0,
+    _lrBonus:0, _laBonus:0,
     connected:false, deviceId:null
   }));
   STATE.size = STATE.gameMode==='ext'?HEX_SIZE_EXT:HEX_SIZE_BASE;
@@ -1940,6 +1951,9 @@ function endTurn(){
   }
   STATE.devCardPlayedThisTurn = false;
   STATE.devRoadsLeft = 0;
+
+  // Limpiar oferta de comercio pendiente (si no fue aceptada, se cancela al pasar turno)
+  if(STATE.pendingTrade){ STATE.pendingTrade = null; _cancelBotTrade(); }
 
   STATE.currentPlayerIdx = (STATE.currentPlayerIdx + 1) % STATE.players.length;
   STATE.phase = 'rolling';
@@ -3401,18 +3415,34 @@ function logEvent(msg, color){
 }
 
 /* =============== MÓDULO 14: RENDER UI REMOTE (móvil) ================ */
+// Elementos que sólo se muestran cuando ya hay jugador asignado
+const _REMOTE_GAME_IDS = ['rTurnBanner','r-hand','rPlacementBanner','rTradeBanner',
+  'rDiscardBanner','rVictimBanner','r-actions'];
+
 function renderRemote(){
   if(STATE.appMode !== 'remote') return;
   const me = STATE.players.find(p=>p.id===STATE.myPlayerId);
-  if(!me){
-    document.getElementById('rMeName').textContent = 'Sin asignar';
-    const s = document.getElementById('rConnStatus');
-    if(s && !s.textContent.includes('⚠')){
-      s.textContent = '⏳ Esperando asignación...';
-      s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.8);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2)';
+
+  // Ocultar/mostrar elementos de juego según si estamos asignados
+  const selPanel = document.getElementById('rPlayerSelectPanel');
+  const assigned = !!me;
+
+  // Si el panel de selección NO está visible y no estamos asignados → mostrar waiting
+  if(!assigned){
+    // Sólo mostrar mensaje si el panel de selección tampoco está activo
+    if(selPanel && selPanel.style.display === 'none'){
+      document.getElementById('rMeName').textContent = 'Sin asignar';
+      const s = document.getElementById('rConnStatus');
+      if(s && !s.textContent.includes('⚠') && !s.textContent.includes('🔗') && !s.textContent.includes('⏳')){
+        s.textContent = '⏳ Esperando asignación...';
+        s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.8);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2)';
+      }
     }
     return;
   }
+
+  // Ya asignado — ocultar panel de selección
+  if(selPanel) selPanel.style.display = 'none';
 
   // Assigned — update status chip
   const s = document.getElementById('rConnStatus');
@@ -4608,31 +4638,63 @@ function sendAction(action){
   }
 }
 
+// Helper: enviar mensaje a todos los canales disponibles
+function _sendToRemote(msg){
+  if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(msg));
+  peerSend(msg);
+  if(bcastChannel) bcastChannel.postMessage(msg);
+}
+
 function handleRemoteAction(action){
   if(action.type==='remote-hello'){
-    // Reasignar si este device ya estaba asignado (reconexión)
-    let existing = STATE.players.find(p=>p.deviceId===action.deviceId && !p.isBot);
-    if(!existing){
-      // Asignar al primer jugador humano libre (sin deviceId y sin ser bot)
-      existing = STATE.players.find(p=>!p.deviceId && !p.isBot);
-    }
+    // ¿Ya estaba asignado este device? (reconexión)
+    const existing = STATE.players.find(p=>p.deviceId===action.deviceId && !p.isBot);
     if(existing){
-      existing.deviceId = action.deviceId;
       existing.connected = true;
-      logEvent(`${existing.name} conectó su celular`, existing.color);
       broadcastState();
-      // Confirmar al cliente cuál es su player id
-      const asgMsg = {type:'assign', payload:{deviceId:action.deviceId, playerId:existing.id}};
-      if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(asgMsg));
-      peerSend(asgMsg);
-      if(bcastChannel) bcastChannel.postMessage(asgMsg);
-    } else {
-      // No hay jugadores humanos disponibles → informar
-      const errMsg = {type:'assign-error', payload:{reason:'no_free_slot'}};
-      if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(errMsg));
-      peerSend(errMsg);
-      if(bcastChannel) bcastChannel.postMessage(errMsg);
+      _sendToRemote({type:'assign', payload:{deviceId:action.deviceId, playerId:existing.id}});
+      return;
     }
+    // Jugadores humanos libres (sin asignar, sin ser bot)
+    const available = STATE.players.filter(p=>!p.deviceId && !p.isBot);
+    if(available.length === 0){
+      _sendToRemote({type:'assign-error', payload:{reason:'no_free_slot'}});
+      return;
+    }
+    // Enviar lista de opciones al celular para que el usuario elija
+    toast(`Un celular quiere unirse — elige jugador en el celular`);
+    _sendToRemote({type:'assign-options', payload:{
+      deviceId: action.deviceId,
+      options: available.map(p=>({id:p.id, name:p.name, color:p.color}))
+    }});
+    return;
+  }
+
+  if(action.type==='assign-pick'){
+    // El usuario del celular eligió su jugador
+    const target = STATE.players.find(p=>p.id===action.playerId && !p.isBot);
+    if(!target){
+      _sendToRemote({type:'assign-error', payload:{reason:'player_not_found'}});
+      return;
+    }
+    if(target.deviceId && target.deviceId !== action.deviceId){
+      // Ya fue tomado por otro celular → re-enviar opciones actualizadas
+      const available = STATE.players.filter(p=>!p.deviceId && !p.isBot);
+      if(available.length){
+        _sendToRemote({type:'assign-options', payload:{
+          deviceId: action.deviceId,
+          options: available.map(p=>({id:p.id, name:p.name, color:p.color}))
+        }});
+      } else {
+        _sendToRemote({type:'assign-error', payload:{reason:'no_free_slot'}});
+      }
+      return;
+    }
+    target.deviceId = action.deviceId;
+    target.connected = true;
+    logEvent(`${target.name} conectó su celular`, target.color);
+    broadcastState();
+    _sendToRemote({type:'assign', payload:{deviceId:action.deviceId, playerId:target.id}});
     return;
   }
   // Acciones del juego desde un remote
@@ -4668,27 +4730,108 @@ function handleRemoteAction(action){
 /* Sobrecarga del handler de mensaje para remote: recibir assign */
 const origHandle = handleSyncMessage;
 function handleSyncMessageRemote(msg){
-  if(msg && msg.type==='assign' && STATE.appMode==='remote'){
+  if(!msg) return origHandle(msg);
+
+  if(msg.type==='assign' && STATE.appMode==='remote'){
     if(msg.payload.deviceId===STATE.myDeviceId){
       STATE.myPlayerId = msg.payload.playerId;
+      // Ocultar panel de selección si estaba visible
+      const sel = document.getElementById('rPlayerSelectPanel');
+      if(sel) sel.style.display = 'none';
       const player = STATE.players.find(p=>p.id===STATE.myPlayerId);
-      toast(`¡Conectado como ${player?.name||'Jugador'}!`);
-      document.getElementById('rConnStatus')?.remove();
+      toast(`¡Jugando como ${player?.name||'Jugador'}!`);
+      const connStatus = document.getElementById('rConnStatus');
+      if(connStatus){
+        connStatus.textContent = '● Conectado';
+        connStatus.style.cssText = 'font-size:11px;color:rgba(34,197,94,0.85);padding:2px 8px;border-radius:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25)';
+      }
       renderRemote();
     }
     return;
   }
-  if(msg && msg.type==='assign-error' && STATE.appMode==='remote'){
+
+  if(msg.type==='assign-options' && STATE.appMode==='remote'){
+    if(msg.payload.deviceId===STATE.myDeviceId){
+      _showPlayerSelectUI(msg.payload.options);
+    }
+    return;
+  }
+
+  if(msg.type==='assign-error' && STATE.appMode==='remote'){
     const s = document.getElementById('rConnStatus');
-    if(s) s.textContent = '⚠ No hay ranuras de jugador humano disponibles en esta partida.';
+    const sel = document.getElementById('rPlayerSelectPanel');
+    if(sel) sel.style.display = 'none';
+    if(s){
+      s.textContent = '⚠ No hay ranuras disponibles en esta partida.';
+      s.style.cssText = 'font-size:11px;color:rgba(239,68,68,0.9);padding:2px 8px;border-radius:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3)';
+    }
     return;
   }
+
   // 'restore' en remote: tratar igual que 'state'
-  if(msg && msg.type==='restore'){
+  if(msg.type==='restore'){
     applySnapshot(msg.payload);
+    renderRemote();
     return;
   }
+
   origHandle(msg);
+}
+
+// Mostrar selección de jugador en el celular
+function _showPlayerSelectUI(options){
+  const panel = document.getElementById('rPlayerSelectPanel');
+  const list  = document.getElementById('rPlayerSelectList');
+  if(!panel || !list) return;
+
+  // Actualizar status chip
+  const s = document.getElementById('rConnStatus');
+  if(s){
+    s.textContent = '🔗 Elige jugador';
+    s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.9);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3)';
+  }
+
+  list.innerHTML = '';
+  if(options.length === 0){
+    list.innerHTML = '<p style="text-align:center;color:var(--ink-dim);font-size:13px">No hay jugadores disponibles</p>';
+  } else {
+    options.forEach(p=>{
+      const color = (typeof PLAYER_COLORS !== 'undefined' && PLAYER_COLORS[p.color])
+        ? PLAYER_COLORS[p.color].hex : '#aaa';
+      const btn = document.createElement('button');
+      btn.style.cssText = `
+        display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;
+        background:var(--bg-1);border:2px solid ${color}55;border-radius:12px;
+        cursor:pointer;transition:border-color .15s,background .15s;
+        font-family:'Inter Tight',sans-serif;
+      `;
+      btn.innerHTML = `
+        <div style="width:36px;height:36px;border-radius:50%;background:${color};flex:0 0 36px;
+                    box-shadow:0 0 0 3px ${color}33"></div>
+        <div style="text-align:left">
+          <div style="font-size:16px;font-weight:600;color:var(--ink)">${p.name}</div>
+          <div style="font-size:11px;color:var(--ink-dim);margin-top:2px">Toca para jugar</div>
+        </div>
+        <div style="margin-left:auto;font-size:22px">▶</div>
+      `;
+      btn.onmouseenter = ()=>{ btn.style.borderColor=color; btn.style.background='rgba(255,255,255,0.04)'; };
+      btn.onmouseleave = ()=>{ btn.style.borderColor=`${color}55`; btn.style.background='var(--bg-1)'; };
+      btn.onclick = ()=>{
+        // Enviar elección al tablero
+        sendAction({type:'assign-pick', playerId: p.id, deviceId: STATE.myDeviceId});
+        // Mostrar "Conectando..."
+        list.innerHTML = `<p style="text-align:center;font-size:14px;color:var(--gold-soft);padding:20px 0">
+          ⏳ Conectando como <b>${p.name}</b>…
+        </p>`;
+        const s2 = document.getElementById('rConnStatus');
+        if(s2){ s2.textContent = '⏳ Asignando...'; }
+      };
+      list.appendChild(btn);
+    });
+  }
+
+  // Mostrar panel, ocultar el resto del remote UI hasta ser asignado
+  panel.style.display = 'block';
 }
 function wrapRemoteChannel(){
   if(bcastChannel){
@@ -7693,10 +7836,13 @@ function bindRemoteEvents(){
       s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.8);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2)';
     }
     document.getElementById('rMeName').textContent = 'Sin asignar';
-    // Retry hello every 3s until assigned
+    // Retry hello every 3s until assigned or until player-select UI is shown
     let retryCount = 0;
     const retryInterval = setInterval(()=>{
       if(STATE.myPlayerId){ clearInterval(retryInterval); return; }
+      // Si el panel de selección ya es visible, dejar de reintentar
+      const sel = document.getElementById('rPlayerSelectPanel');
+      if(sel && sel.style.display !== 'none'){ clearInterval(retryInterval); return; }
       if(retryCount++ > 10){ clearInterval(retryInterval); return; } // stop after 30s
       sendAction({type:'remote-hello', deviceId:STATE.myDeviceId});
     }, 3000);
