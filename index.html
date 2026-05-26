@@ -782,7 +782,10 @@ body.remote .toast-item{
     <h2>2. Jugadores</h2>
     <p style="margin-bottom:10px">Mínimo 3 jugadores. Cada uno puede conectar su celular como control remoto privado.</p>
     <div class="player-setup-list" id="playerSetup"></div>
-    <button class="btn" id="btnAddPlayer" style="font-size:11px;padding:6px 10px">+ Añadir Jugador</button>
+    <div style="display:flex;gap:6px;margin-top:4px">
+      <button class="btn" id="btnAddPlayer" style="font-size:11px;padding:6px 10px;flex:1">👤 Añadir Humano</button>
+      <button class="btn" id="btnAddBot"    style="font-size:11px;padding:6px 10px;flex:1;border-color:rgba(34,197,94,0.4);color:rgba(34,197,94,0.85)">🤖 Añadir Bot</button>
+    </div>
 
     <h2>3. Tipo de Partida</h2>
     <div class="modal-modes">
@@ -1730,6 +1733,7 @@ function startGame(opts){
   STATE.players = opts.players.map((p,i)=>({
     id:'p'+i,
     color:p.color, name:p.name,
+    isBot: !!p.isBot,
     vp:0, resources:{wood:0,wool:0,wheat:0,ore:0,brick:0},
     devCards:[], devCardsBoughtThisTurn:[],
     settlements:[], cities:[], roads:[],
@@ -3005,7 +3009,7 @@ function renderPlayersList(){
         <div style="width:18px;height:18px;border-radius:50%;background:${PLAYER_COLORS[p.color].hex};border:1.5px solid rgba(255,255,255,0.2);flex:0 0 18px;position:relative">
           ${p.connected?'<div style="position:absolute;right:-2px;bottom:-2px;width:7px;height:7px;border-radius:50%;background:var(--green-ok);border:1.5px solid var(--bg-1)"></div>':''}
         </div>
-        <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${p.name}</div>
+        <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${p.name}${p.isBot?'<span style="font-size:10px;color:rgba(34,197,94,0.7);margin-left:4px">🤖</span>':''}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold-soft);font-weight:600">${totalVP}<span style="font-size:9px;color:var(--ink-dim);margin-left:2px">PV</span></div>
       </div>
     `;
@@ -3480,6 +3484,233 @@ function autoDiscardBest(playerId, n){
   return sel;
 }
 
+/* =============== MÓDULO 14B: BOT AI ================ */
+// Timer de acción
+let _botTimer = null;
+function _schedBot(fn, ms=850){
+  if(_botTimer) return;
+  _botTimer = setTimeout(()=>{ _botTimer=null; fn(); }, ms);
+}
+function _cancelBot(){ if(_botTimer){ clearTimeout(_botTimer); _botTimer=null; } }
+
+// Probabilidad de un número (pips estándar de Catan)
+function _pips(n){ return n ? Math.max(0, 6-Math.abs(7-n)) : 0; }
+
+// Total recursos de un jugador
+function _totRes(p){ return Object.values(p.resources).reduce((a,b)=>a+b,0); }
+
+// Puntuar un vértice para colocar poblado
+function _scoreVertex(vid, pid, isStarting){
+  if(!isVertexValidForSettlement(vid, pid, isStarting)) return -1;
+  const v = STATE.vertices.get(vid);
+  if(!v) return -1;
+  let pips=0; const terr=new Set();
+  v.hexes.forEach(({q,r})=>{
+    const h=STATE.hexes.find(x=>x.q===q&&x.r===r);
+    if(!h||!TERRAIN_INFO[h.terrain]?.resource) return;
+    pips += _pips(h.number);
+    terr.add(h.terrain);
+  });
+  return pips + terr.size*2;
+}
+
+// Mejor vértice disponible para un jugador
+function _bestVertex(pid, isStarting){
+  let best=null, bs=-1;
+  STATE.vertices.forEach((_,vid)=>{
+    const s=_scoreVertex(vid,pid,isStarting);
+    if(s>bs){bs=s;best=vid;}
+  });
+  return best;
+}
+
+// Mejor arista para carretera (apunta hacia vértice valioso)
+function _bestEdge(pid, startVid){
+  let best=null, bs=-1;
+  STATE.edges.forEach((e,eid)=>{
+    if(!isEdgeValidForRoad(eid, pid, !!startVid, startVid||null)) return;
+    let s=0;
+    e.verts.forEach(vid=>{ s=Math.max(s, _scoreVertex(vid,pid,false)); });
+    if(s>bs){bs=s;best=eid;}
+  });
+  return best;
+}
+
+// Mejor asentamiento propio para convertir en ciudad
+function _bestCityVertex(pid){
+  const pl=STATE.players.find(p=>p.id===pid);
+  if(!pl||!pl.settlements.length) return null;
+  let best=null, bs=-1;
+  pl.settlements.forEach(({vertex:vid})=>{
+    const v=STATE.vertices.get(vid); if(!v) return;
+    let s=0;
+    v.hexes.forEach(({q,r})=>{
+      const h=STATE.hexes.find(x=>x.q===q&&x.r===r);
+      if(h) s+=_pips(h.number);
+    });
+    if(s>bs){bs=s;best=vid;}
+  });
+  return best;
+}
+
+// Mover ladrón al mejor hex (perjudicar oponente con más PV / recursos)
+function _botRobber(player){
+  let bestHex=null, bestScore=-Infinity;
+  STATE.hexes.forEach(h=>{
+    if(h.terrain==='sea') return;
+    const hk=hexKey(h.q,h.r);
+    if(hk===STATE.robberHex) return;
+    const hp=hexToPixel(h.q,h.r,STATE.size);
+    let oppScore=0;
+    for(let ci=0;ci<6;ci++){
+      const c=hexCorner(hp.x,hp.y,STATE.size,ci);
+      const vk=Math.round(c.x*100)+","+Math.round(c.y*100);
+      STATE.players.forEach(opp=>{
+        if(opp.id===player.id) return;
+        const hasBld=opp.settlements.some(s=>s.vertex===vk)||opp.cities.some(c=>c.vertex===vk);
+        if(!hasBld) return;
+        oppScore += 1 + _totRes(opp)*0.15 + opp.vp*0.5;
+      });
+    }
+    const score=_pips(h.number)*0.4+oppScore;
+    if(score>bestScore){bestScore=score;bestHex=hk;}
+  });
+  if(!bestHex){
+    const fb=STATE.hexes.find(h=>h.terrain!=='sea'&&hexKey(h.q,h.r)!==STATE.robberHex);
+    if(fb) bestHex=hexKey(fb.q,fb.r);
+  }
+  if(bestHex) moveRobber(bestHex, player.id);
+}
+
+// Intentar comerciar con banco para acercarse a objetivo
+function _botBankTrade(player){
+  const res=player.resources;
+  const surplus=Object.entries(res)
+    .map(([r,q])=>({r,q,rate:getBestTradeRate(player,r)}))
+    .filter(x=>x.q>=x.rate)
+    .sort((a,b)=>(b.q/b.rate)-(a.q/a.rate));
+  if(!surplus.length) return false;
+  // Necesidad hacia ciudad o poblado
+  const targets=[COSTS.city, COSTS.settlement, COSTS.road];
+  for(const cost of targets){
+    const lacks=Object.entries(cost)
+      .filter(([r,q])=>(res[r]||0)<q)
+      .map(([r])=>r)
+      .filter(r=>r!==surplus[0].r);
+    if(lacks.length){
+      tradeWithBank(player.id, surplus[0].r, lacks[0]);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Fase principal del bot
+function _botMain(player){
+  // 1. Ciudad
+  if(canAfford(player,COSTS.city)&&player.settlements.length>0){
+    requestBuild(player.id,'city'); return;
+  }
+  // 2. Poblado (si hay sitio)
+  if(canAfford(player,COSTS.settlement)){
+    const spot=[...STATE.vertices.values()].find(v=>isVertexValidForSettlement(v.id,player.id,false));
+    if(spot){ requestBuild(player.id,'settlement'); return; }
+  }
+  // 3. Carta de desarrollo
+  if(canAfford(player,COSTS.dev)&&STATE.devDeck.length>0&&player.vp>=2&&!STATE.devCardPlayedThisTurn){
+    requestBuild(player.id,'dev'); return;
+  }
+  // 4. Carretera (solo si tiene menos de 12 y puede expandirse)
+  if(canAfford(player,COSTS.road)&&player.roads.length<12){
+    const e=[...STATE.edges.values()].find(ed=>isEdgeValidForRoad(ed.id,player.id,false));
+    if(e){ requestBuild(player.id,'road'); return; }
+  }
+  // 5. Jugar caballero si tiene y hay oponente con muchos recursos
+  if(!STATE.devCardPlayedThisTurn&&player.devCards.includes('knight')){
+    const threat=STATE.players.some(p=>p.id!==player.id&&(p.vp>=7||_totRes(p)>=9));
+    if(threat){ playDevCard(player.id,'knight'); return; }
+  }
+  // 6. Comercio con banco
+  if(_botBankTrade(player)) return;
+  // 7. Fin de turno
+  endTurn();
+}
+
+// Punto de entrada: llamado desde renderAll() tras cada cambio de estado
+function checkBotTurn(){
+  if(STATE.appMode!=='board'||STATE.phase==='lobby'||STATE.phase==='gameover') return;
+
+  // Descarte (cualquier bot en la cola)
+  if(STATE.phase==='discard'){
+    const botQ=Object.entries(STATE.discardQueue)
+      .filter(([pid])=>STATE.players.find(p=>p.id===pid)?.isBot);
+    if(botQ.length) _schedBot(()=>{
+      botQ.forEach(([pid,amt])=>{
+        if(STATE.discardQueue[pid]) submitDiscard(pid, autoDiscardBest(pid,amt));
+      });
+    }, 600);
+    return;
+  }
+
+  const player=STATE.players[STATE.currentPlayerIdx];
+  if(!player?.isBot) return;
+
+  const pa=STATE.pendingAction;
+
+  // Acción pendiente del bot actual
+  if(pa&&pa.playerId===player.id){
+    switch(pa.type){
+      case 'place-settlement':
+        _schedBot(()=>{
+          const vid=_bestVertex(player.id, STATE.phase==='starting');
+          if(vid) placeSettlement(vid,player.id);
+        }); return;
+      case 'place-road':
+        _schedBot(()=>{
+          const sv=STATE.phase==='starting'?STATE.startingPlacedThisTurn.lastVertex:null;
+          const eid=_bestEdge(player.id,sv);
+          if(eid) placeRoad(eid,player.id);
+          else { STATE.pendingAction=null; renderAll(); broadcastState(); }
+        },700); return;
+      case 'place-city':
+        _schedBot(()=>{
+          const vid=_bestCityVertex(player.id);
+          if(vid) placeCity(vid,player.id);
+        },700); return;
+      case 'move-robber':
+        _schedBot(()=>_botRobber(player),900); return;
+      case 'steal-victim':
+        _schedBot(()=>{
+          if(STATE.robberVictims.length){
+            const v=STATE.robberVictims
+              .map(id=>STATE.players.find(p=>p.id===id))
+              .filter(Boolean)
+              .sort((a,b)=>(_totRes(b)+b.vp)-(_totRes(a)+a.vp))[0];
+            if(v) stealFrom(player.id,v.id);
+          }
+        },700); return;
+    }
+  }
+
+  // Acciones por fase
+  switch(STATE.phase){
+    case 'starting':
+      // Sin pendingAction + settlement+road colocados → avanzar
+      if(!pa&&STATE.startingPlacedThisTurn?.settlement&&STATE.startingPlacedThisTurn?.road)
+        _schedBot(()=>advanceStartingPhase(), 500);
+      break;
+    case 'rolling':
+      _schedBot(()=>rollDice(), 700);
+      break;
+    case 'main':
+      if(!pa) _schedBot(()=>_botMain(player), 900);
+      break;
+    case 'robber':
+      if(!pa) _schedBot(()=>_botRobber(player), 900);
+      break;
+  }
+}
+
 /* =============== MÓDULO 15: RENDER ALL (orquestador) ================ */
 function renderAll(){
   if(STATE.appMode==='board'){
@@ -3495,6 +3726,8 @@ function renderAll(){
     renderBoard();   // El móvil también ve el tablero (versión mini)
     renderRemote();
   }
+  // Trigger bot actions after any state change
+  checkBotTurn();
 }
 
 function renderProjectorScoreboard(){
@@ -6631,10 +6864,10 @@ const SETUP = {
   gameMode: 'base',
   gameType: 'full',
   players: [
-    {color:'red',    name:'Jugador 1'},
-    {color:'blue',   name:'Jugador 2'},
-    {color:'white',  name:'Jugador 3'},
-    {color:'orange', name:'Jugador 4'},
+    {color:'red',    name:'Tú',      isBot:false},
+    {color:'blue',   name:'Bot Azul',  isBot:true},
+    {color:'white',  name:'Bot Blanco',isBot:true},
+    {color:'orange', name:'Bot Naran.', isBot:true},
   ]
 };
 
@@ -6644,23 +6877,44 @@ function renderPlayerSetup(){
   SETUP.players.forEach((p,i)=>{
     const row = document.createElement('div');
     row.className='player-setup-row';
+    const botActive = p.isBot;
     row.innerHTML = `
       <div class="psr-dot" data-i="${i}" style="background:${PLAYER_COLORS[p.color].hex}"></div>
-      <input class="psr-input" data-i="${i}" type="text" value="${p.name}"/>
+      <input class="psr-input" data-i="${i}" type="text" value="${p.name}" style="flex:1"/>
+      <button class="psr-bot" data-i="${i}" title="${botActive?'Convertir en humano':'Convertir en bot'}"
+        style="padding:3px 8px;border-radius:5px;border:1px solid ${botActive?'rgba(34,197,94,0.6)':'rgba(255,255,255,0.15)'};background:${botActive?'rgba(34,197,94,0.18)':'rgba(255,255,255,0.05)'};color:${botActive?'#4ade80':'rgba(255,255,255,0.45)'};cursor:pointer;font-size:13px;line-height:1;white-space:nowrap">
+        🤖
+      </button>
       <button class="psr-rm" data-i="${i}" title="Eliminar">×</button>
     `;
     wrap.appendChild(row);
   });
+  // Conteo resumen
+  const bots = SETUP.players.filter(p=>p.isBot).length;
+  const humans = SETUP.players.length - bots;
+  let summary = wrap.parentElement.querySelector('.psr-summary');
+  if(!summary){ summary=document.createElement('div'); summary.className='psr-summary'; wrap.after(summary); }
+  summary.style.cssText='font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;text-align:center';
+  summary.textContent = humans===SETUP.players.length
+    ? `${humans} jugadores humanos`
+    : `${humans} humano${humans!==1?'s':''} · ${bots} bot${bots!==1?'s':''}`;
   // Eventos
   wrap.querySelectorAll('.psr-dot').forEach(d=>{
-    d.onclick = ()=>{
-      const i = +d.dataset.i;
-      // Mostrar selector de color
-      cyclePlayerColor(i);
-    };
+    d.onclick = ()=>{ cyclePlayerColor(+d.dataset.i); };
   });
   wrap.querySelectorAll('.psr-input').forEach(inp=>{
     inp.oninput = ()=>{ SETUP.players[+inp.dataset.i].name = inp.value; };
+  });
+  wrap.querySelectorAll('.psr-bot').forEach(b=>{
+    b.onclick = ()=>{
+      const i=+b.dataset.i;
+      SETUP.players[i].isBot = !SETUP.players[i].isBot;
+      // Auto-name bots
+      if(SETUP.players[i].isBot && !SETUP.players[i].name.startsWith('Bot')){
+        SETUP.players[i].name = 'Bot '+PLAYER_COLORS[SETUP.players[i].color].name;
+      }
+      renderPlayerSetup();
+    };
   });
   wrap.querySelectorAll('.psr-rm').forEach(b=>{
     b.onclick = ()=>{
@@ -6704,7 +6958,15 @@ function bindBoardEvents(){
     if(SETUP.players.length>=max){toast('Máximo '+max+' jugadores',true); return;}
     const used = SETUP.players.map(p=>p.color);
     const free = Object.keys(PLAYER_COLORS).find(c=>!used.includes(c));
-    SETUP.players.push({color:free||'red', name:'Jugador '+(SETUP.players.length+1)});
+    SETUP.players.push({color:free||'red', name:'Jugador '+(SETUP.players.length+1), isBot:false});
+    renderPlayerSetup();
+  };
+  document.getElementById('btnAddBot').onclick = ()=>{
+    const max = SETUP.gameMode==='ext'?6:4;
+    if(SETUP.players.length>=max){toast('Máximo '+max+' jugadores',true); return;}
+    const used = SETUP.players.map(p=>p.color);
+    const free = Object.keys(PLAYER_COLORS).find(c=>!used.includes(c))||'red';
+    SETUP.players.push({color:free, name:'Bot '+PLAYER_COLORS[free].name, isBot:true});
     renderPlayerSetup();
   };
   document.getElementById('btnStartGame').onclick = ()=>{
