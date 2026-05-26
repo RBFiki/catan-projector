@@ -24,8 +24,8 @@ from collections import defaultdict
 import websockets
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-HTTP_PORT = 8080
-WS_PORT   = 8765
+HTTP_PORT = 9080
+WS_PORT   = 9765
 
 rooms: dict = defaultdict(set)  # code → set of websocket connections
 

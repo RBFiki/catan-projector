@@ -883,6 +883,11 @@ body.remote .toast-item{
       <div class="players-list" id="playersList"></div>
     </div>
 
+    <div class="section" id="robberVictimSection" style="display:none">
+      <div class="section-title">☠ Ladrón</div>
+      <div id="robberVictimContent"></div>
+    </div>
+
     <div class="section" id="pendingTradeSection" style="display:none">
       <div class="section-title">↔ Intercambio Activo</div>
       <div id="pendingTradeContent"></div>
@@ -1072,6 +1077,19 @@ body.remote .toast-item{
         <button class="action-btn primary" id="rBtnAcceptTrade">✓ Aceptar</button>
         <button class="action-btn" id="rBtnCancelTrade">✕ Cancelar</button>
       </div>
+    </div>
+
+    <!-- Banner: descarte al sacar 7 -->
+    <div class="trade-offer-banner" id="rDiscardBanner" style="display:none;border-color:rgba(192,57,43,0.5);background:rgba(192,57,43,0.08)">
+      <div class="tob-header" style="color:#ff8a80">☠ <span id="rDiscardLabel">Debes descartar cartas</span></div>
+      <div id="rDiscardBody" style="margin:8px 0"></div>
+      <button class="action-btn primary" id="rBtnConfirmDiscard" style="background:rgba(192,57,43,0.6);width:100%">Descartar selección</button>
+    </div>
+
+    <!-- Banner: elegir víctima del ladrón -->
+    <div class="trade-offer-banner" id="rVictimBanner" style="display:none;border-color:rgba(192,57,43,0.5);background:rgba(192,57,43,0.08)">
+      <div class="tob-header" style="color:#ff8a80">☠ Elige a quién robar</div>
+      <div id="rVictimBody" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
     </div>
 
     <div class="r-actions">
@@ -1403,6 +1421,8 @@ const STATE = {
   devCardPlayedThisTurn: false,
   devRoadsLeft: 0,           // carreteras gratuitas restantes de la carta Road Building
   lastRoll: null,
+  discardQueue: {},          // {playerId: cantidadADescartar} — jugadores que deben descartar al sacar 7
+  robberVictims: [],         // candidatos para robar tras mover el ladrón
 
   /* Robber */
   robberHex: null,
@@ -1634,17 +1654,21 @@ function rollDice(){
   setTimeout(()=>{
     if(sum===7){
       logEvent(`🎲 ${d1}+${d2}=${sum} · ¡Ladrón!`, '#c0392b');
-      // Cualquier jugador con >7 cartas descarta la mitad
+      // Construir cola de descarte — los jugadores eligen manualmente
+      STATE.discardQueue = {};
       STATE.players.forEach(p=>{
         const total = Object.values(p.resources).reduce((a,b)=>a+b,0);
         if(total>7){
-          const toLose = Math.floor(total/2);
-          autoDiscard(p, toLose);
-          logEvent(`${p.name} descarta ${toLose} cartas`, p.color);
+          STATE.discardQueue[p.id] = Math.floor(total/2);
+          logEvent(`${p.name} debe descartar ${Math.floor(total/2)} cartas`, p.color);
         }
       });
-      STATE.phase = 'robber';
-      STATE.pendingAction = {type:'move-robber', playerId:STATE.players[STATE.currentPlayerIdx].id};
+      if(Object.keys(STATE.discardQueue).length > 0){
+        STATE.phase = 'discard';
+      } else {
+        STATE.phase = 'robber';
+        STATE.pendingAction = {type:'move-robber', playerId:STATE.players[STATE.currentPlayerIdx].id};
+      }
     } else {
       logEvent(`🎲 ${d1}+${d2}=${sum}`, '#d9b46a');
       distributeResources(sum);
@@ -1656,12 +1680,39 @@ function rollDice(){
 }
 
 function autoDiscard(player, n){
-  // Descarte automático: descarta del recurso más abundante
   for(let i=0;i<n;i++){
     const entries = Object.entries(player.resources).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
     if(!entries.length) break;
     player.resources[entries[0][0]]--;
   }
+}
+
+function submitDiscard(playerId, selection){
+  // selection = {wood:1, ore:2, ...} — recursos a descartar
+  const needed = STATE.discardQueue[playerId];
+  if(!needed) return;
+  const total = Object.values(selection).reduce((a,b)=>a+b,0);
+  if(total !== needed) return toast(`Debes descartar exactamente ${needed} cartas`, true);
+  const player = STATE.players.find(p=>p.id===playerId);
+  if(!player) return;
+  // Verificar que el jugador tiene los recursos
+  for(const [res, qty] of Object.entries(selection)){
+    if((player.resources[res]||0) < qty) return toast(`No tienes suficiente ${RESOURCE_INFO[res]?.name||res}`, true);
+  }
+  // Aplicar descarte
+  for(const [res, qty] of Object.entries(selection)){
+    player.resources[res] -= qty;
+  }
+  logEvent(`${player.name} descarta ${needed} cartas`, player.color);
+  delete STATE.discardQueue[playerId];
+  // Si todos descartaron, pasar a fase robber
+  if(Object.keys(STATE.discardQueue).length === 0){
+    STATE.phase = 'robber';
+    STATE.pendingAction = {type:'move-robber', playerId:STATE.players[STATE.currentPlayerIdx].id};
+    logEvent('Todos descartaron · Mueve el ladrón', '#c0392b');
+  }
+  renderAll();
+  broadcastState();
 }
 
 function showDiceFlash(num){
@@ -1963,22 +2014,41 @@ function moveRobber(targetHexKey, playerId){
       });
     }
     const victims = Array.from(victimsSet);
-    if(victims.length){
-      // Robar a uno aleatoriamente (en una versión completa, daríamos opción)
-      const victimId = victims[Math.floor(Math.random()*victims.length)];
-      const victim = STATE.players.find(p=>p.id===victimId);
-      const robber = STATE.players[STATE.currentPlayerIdx];
-      const cards = [];
-      Object.entries(victim.resources).forEach(([k,v])=>{for(let i=0;i<v;i++) cards.push(k);});
-      if(cards.length){
-        const stolen = cards[Math.floor(Math.random()*cards.length)];
-        victim.resources[stolen]--;
-        robber.resources[stolen]++;
-        logEvent(`${robber.name} roba 1 carta a ${victim.name}`, robber.color);
-      }
+    if(victims.length === 1){
+      // Solo una víctima → robar automáticamente
+      stealFrom(playerId, victims[0]);
+      return; // stealFrom llama a renderAll/broadcastState
+    } else if(victims.length > 1){
+      // Múltiples víctimas → el jugador elige
+      STATE.robberVictims = victims;
+      STATE.phase = STATE.pendingAction?.returnPhase || 'main';
+      STATE.pendingAction = {type:'steal-victim', playerId, returnPhase: STATE.pendingAction?.returnPhase||'main'};
+      renderAll();
+      broadcastState();
+      return;
     }
   }
 
+  STATE.robberVictims = [];
+  STATE.phase = STATE.pendingAction?.returnPhase || 'main';
+  STATE.pendingAction = null;
+  renderAll();
+  broadcastState();
+}
+
+function stealFrom(robberId, victimId){
+  const robber = STATE.players.find(p=>p.id===robberId);
+  const victim = STATE.players.find(p=>p.id===victimId);
+  if(!robber || !victim) return;
+  const cards = [];
+  Object.entries(victim.resources).forEach(([k,v])=>{ for(let i=0;i<v;i++) cards.push(k); });
+  if(cards.length){
+    const stolen = cards[Math.floor(Math.random()*cards.length)];
+    victim.resources[stolen]--;
+    robber.resources[stolen]++;
+    logEvent(`${robber.name} roba 1 carta a ${victim.name}`, robber.color);
+  }
+  STATE.robberVictims = [];
   STATE.phase = STATE.pendingAction?.returnPhase || 'main';
   STATE.pendingAction = null;
   renderAll();
@@ -2944,6 +3014,73 @@ function renderRemote(){
     tbEl.style.display = 'none';
   }
 
+  // Banner: descarte al sacar 7
+  const discardEl = document.getElementById('rDiscardBanner');
+  const myDiscard = STATE.discardQueue?.[me.id];
+  if(myDiscard){
+    document.getElementById('rDiscardLabel').textContent = `Descarta ${myDiscard} carta${myDiscard!==1?'s':''} (tienes ${totalRes})`;
+    const body = document.getElementById('rDiscardBody');
+    // Construir UI de descarte si no existe o regenerar
+    if(!discardEl._discardState || JSON.stringify(discardEl._discardState) !== JSON.stringify(me.resources)){
+      discardEl._discardState = {...me.resources};
+      discardEl._discardSel = {};  // selección acumulada
+      body.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:4px';
+      Object.entries(RESOURCE_INFO).forEach(([k,info])=>{
+        const q = me.resources[k]||0;
+        if(!q) return;
+        const btn = document.createElement('div');
+        btn.style.cssText = `background:${info.color};border-radius:6px;padding:6px 0;text-align:center;cursor:pointer;user-select:none;position:relative`;
+        btn.dataset.res = k;
+        btn.dataset.max = q;
+        btn.innerHTML = `<div style="font-size:13px">${info.emoji}</div><div id="rds-${k}" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#fff">${q}</div>`;
+        btn.addEventListener('click', ()=>{
+          const sel = discardEl._discardSel;
+          const cur = sel[k]||0;
+          const max = me.resources[k]||0;
+          const newVal = cur < max ? cur+1 : 0;
+          sel[k] = newVal;
+          const remaining = q - newVal;
+          btn.querySelector(`#rds-${k}`).textContent = remaining;
+          btn.style.opacity = newVal>0 ? '0.5' : '1';
+          const selTotal = Object.values(sel).reduce((a,b)=>a+b,0);
+          document.getElementById('rBtnConfirmDiscard').textContent = `Descartar ${selTotal}/${myDiscard}`;
+        });
+        grid.appendChild(btn);
+      });
+      body.appendChild(grid);
+      body.insertAdjacentHTML('beforeend','<div style="font-size:10px;color:rgba(255,255,255,0.5);text-align:center">Toca cada recurso para seleccionarlo · toca de nuevo para deseleccionar</div>');
+    }
+    discardEl.style.display = 'flex';
+  } else {
+    discardEl.style.display = 'none';
+    discardEl._discardState = null;
+    discardEl._discardSel = {};
+  }
+
+  // Banner: elegir víctima del ladrón
+  const victimEl = document.getElementById('rVictimBanner');
+  const isRobberChooser = STATE.pendingAction?.type==='steal-victim' && STATE.pendingAction.playerId===me.id;
+  if(isRobberChooser && STATE.robberVictims?.length > 1){
+    const vBody = document.getElementById('rVictimBody');
+    vBody.innerHTML = '';
+    STATE.robberVictims.forEach(vid=>{
+      const vp = STATE.players.find(p=>p.id===vid);
+      if(!vp) return;
+      const btn = document.createElement('button');
+      btn.className = 'action-btn';
+      btn.style.cssText = `border-left:3px solid ${PLAYER_COLORS[vp.color].hex};text-align:left;padding:10px 12px`;
+      const vTotal = Object.values(vp.resources).reduce((a,b)=>a+b,0);
+      btn.innerHTML = `<span style="color:${PLAYER_COLORS[vp.color].hex}">●</span> ${vp.name} · ${vTotal} cartas`;
+      btn.onclick = ()=> sendAction({type:'steal-from', victimId:vid, deviceId:STATE.myDeviceId});
+      vBody.appendChild(btn);
+    });
+    victimEl.style.display = 'flex';
+  } else {
+    victimEl.style.display = 'none';
+  }
+
   // Otros jugadores
   const others = document.getElementById('rOthers');
   others.innerHTML = '';
@@ -3008,6 +3145,60 @@ function renderPendingTradeBoard(){
   content.innerHTML = html;
 }
 
+function renderRobberBoard(){
+  // Selección de víctima del ladrón en el panel del tablero
+  const sec = document.getElementById('robberVictimSection');
+  const cnt = document.getElementById('robberVictimContent');
+  if(!sec || !cnt) return;
+  const isVictimPhase = STATE.pendingAction?.type === 'steal-victim';
+  const isDiscardPhase = STATE.phase === 'discard';
+  if(isVictimPhase && (STATE.robberVictims||[]).length > 0){
+    sec.style.display = '';
+    const robber = STATE.players.find(p=>p.id===STATE.pendingAction.playerId);
+    let html = `<div style="font-size:12px;margin-bottom:8px;color:var(--ink-dim)">${robber?.name||'?'} elige a quién robar:</div>`;
+    STATE.robberVictims.forEach(vid=>{
+      const vp = STATE.players.find(p=>p.id===vid);
+      if(!vp) return;
+      const vt = Object.values(vp.resources).reduce((a,b)=>a+b,0);
+      html += `<button class="btn btn-block" style="margin-bottom:6px;font-size:11px;border-left:3px solid ${PLAYER_COLORS[vp.color].hex}"
+        onclick="stealFrom('${STATE.pendingAction.playerId}','${vid}')">
+        <span style="color:${PLAYER_COLORS[vp.color].hex}">●</span> ${vp.name} (${vt} cartas)
+      </button>`;
+    });
+    cnt.innerHTML = html;
+  } else if(isDiscardPhase){
+    sec.style.display = '';
+    let html = `<div style="font-size:12px;color:var(--ink-dim);margin-bottom:8px">Esperando descartes:</div>`;
+    Object.entries(STATE.discardQueue||{}).forEach(([pid, amt])=>{
+      const p = STATE.players.find(x=>x.id===pid);
+      if(!p) return;
+      html += `<div style="font-size:11px;margin-bottom:4px">
+        <span style="color:${PLAYER_COLORS[p.color].hex}">●</span> ${p.name}: descarta ${amt} cartas
+        <button style="float:right;font-size:10px;background:rgba(192,57,43,0.3);border:none;color:#fff;padding:1px 6px;border-radius:3px;cursor:pointer"
+          onclick="submitDiscard('${pid}',autoDiscardBest('${pid}',${amt}))">Auto</button>
+      </div>`;
+    });
+    cnt.innerHTML = html;
+  } else {
+    sec.style.display = 'none';
+  }
+}
+
+function autoDiscardBest(playerId, n){
+  const p = STATE.players.find(x=>x.id===playerId);
+  if(!p) return {};
+  const res = {...p.resources};
+  const sel = {};
+  for(let i=0;i<n;i++){
+    const entries = Object.entries(res).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if(!entries.length) break;
+    const [k] = entries[0];
+    sel[k] = (sel[k]||0)+1;
+    res[k]--;
+  }
+  return sel;
+}
+
 /* =============== MÓDULO 15: RENDER ALL (orquestador) ================ */
 function renderAll(){
   if(STATE.appMode==='board'){
@@ -3016,6 +3207,7 @@ function renderAll(){
     renderTurnBanner();
     renderRollHistory();
     renderPendingTradeBoard();
+    renderRobberBoard();
     renderEventLog();
     renderProjectorScoreboard();
   } else {
@@ -3236,6 +3428,8 @@ function makeSnapshot(){
     lastRoll: STATE.lastRoll,
     robberHex: STATE.robberHex,
     devDeckSize: STATE.devDeck.length,
+    discardQueue: STATE.discardQueue || {},
+    robberVictims: STATE.robberVictims || [],
     rolls: STATE.rolls.slice(0,20),
     log: STATE.log.slice(0,40)
   };
@@ -3260,6 +3454,9 @@ function applySnapshot(snap){
   STATE.devRoadsLeft = snap.devRoadsLeft || 0;
   STATE.lastRoll = snap.lastRoll;
   STATE.robberHex = snap.robberHex;
+  STATE.devDeck = new Array(snap.devDeckSize || 0).fill('?');  // longitud correcta para botón comprar
+  STATE.discardQueue = snap.discardQueue || {};
+  STATE.robberVictims = snap.robberVictims || [];
   STATE.rolls = snap.rolls || [];
   STATE.log = snap.log || [];
 
@@ -3345,7 +3542,13 @@ function handleRemoteAction(action){
   } else if(action.type==='trade-accept'){
     acceptTrade(player.id);
   } else if(action.type==='trade-cancel'){
-    if(STATE.pendingTrade) cancelTrade();  // cualquier jugador puede cancelar/rechazar
+    if(STATE.pendingTrade) cancelTrade();
+  } else if(action.type==='discard'){
+    submitDiscard(player.id, action.selection);
+  } else if(action.type==='steal-from'){
+    if(STATE.pendingAction?.type==='steal-victim' && STATE.pendingAction.playerId===player.id){
+      stealFrom(player.id, action.victimId);
+    }
   }
 }
 
@@ -6255,6 +6458,14 @@ function bindRemoteEvents(){
   };
   document.getElementById('rBtnCancel').onclick = ()=>{
     sendAction({type:'cancel', deviceId:STATE.myDeviceId});
+  };
+  document.getElementById('rBtnConfirmDiscard').onclick = ()=>{
+    const discardEl = document.getElementById('rDiscardBanner');
+    const sel = discardEl._discardSel || {};
+    const total = Object.values(sel).reduce((a,b)=>a+b,0);
+    const needed = STATE.discardQueue?.[STATE.myPlayerId];
+    if(total !== needed){ toast(`Selecciona exactamente ${needed} cartas`, true); return; }
+    sendAction({type:'discard', selection: sel, deviceId: STATE.myDeviceId});
   };
 
   document.getElementById('btnCloseTrade').onclick = ()=>{
