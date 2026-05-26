@@ -1153,6 +1153,36 @@ body.remote .toast-item{
       </div>
     </div>
 
+    <!-- Acciones del jugador humano (juego local) -->
+    <div class="section" id="boardActionsSection" style="display:none">
+      <div class="section-title" id="boardActionsTitle">🎮 Tu turno</div>
+
+      <!-- Recursos del jugador actual -->
+      <div id="boardPlayerRes" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px"></div>
+
+      <!-- Botones de construcción -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <button class="btn" id="bBtnSettlement" style="flex-direction:column;gap:2px;padding:8px 6px;font-size:12px">
+          <span>🏠 Poblado</span>
+          <span style="font-size:9px;opacity:.6">🌲🧱🐑🌾</span>
+        </button>
+        <button class="btn" id="bBtnCity" style="flex-direction:column;gap:2px;padding:8px 6px;font-size:12px">
+          <span>🏙 Ciudad</span>
+          <span style="font-size:9px;opacity:.6">⛏⛏⛏🌾🌾</span>
+        </button>
+        <button class="btn" id="bBtnRoad" style="flex-direction:column;gap:2px;padding:8px 6px;font-size:12px">
+          <span>🛤 Carretera</span>
+          <span style="font-size:9px;opacity:.6">🌲🧱</span>
+        </button>
+        <button class="btn" id="bBtnDev" style="flex-direction:column;gap:2px;padding:8px 6px;font-size:12px">
+          <span>📜 Carta Dev</span>
+          <span style="font-size:9px;opacity:.6">⛏🐑🌾</span>
+        </button>
+      </div>
+      <button class="btn" id="bBtnTrade" style="width:100%;font-size:12px;margin-bottom:4px">🏦 Comercio con banco</button>
+      <button class="btn" id="bBtnCancel" style="width:100%;font-size:12px;display:none;border-color:rgba(239,68,68,0.4);color:rgba(239,68,68,0.8)">✕ Cancelar colocación</button>
+    </div>
+
     <div class="section">
       <div class="section-title">Historial</div>
       <div class="history" id="rollHistory">
@@ -3042,6 +3072,131 @@ function renderPlayersList(){
   });
 }
 
+function renderBoardActions(){
+  const sec = document.getElementById('boardActionsSection');
+  if(!sec) return;
+
+  const me = STATE.players[STATE.currentPlayerIdx];
+  // Show only for non-bot, non-remote human players in an active game
+  // (me.deviceId means a phone is controlling this slot — hide panel there)
+  if(!me || me.isBot || me.deviceId || STATE.phase==='lobby' || STATE.phase==='gameover'){
+    sec.style.display='none'; return;
+  }
+
+  sec.style.display='';
+
+  // Title reflects phase
+  const title = document.getElementById('boardActionsTitle');
+  if(title){
+    const n = `<span style="color:${PLAYER_COLORS[me.color].hex}">${me.name}</span>`;
+    if(STATE.phase==='starting')      title.innerHTML = `${n} — colocación inicial`;
+    else if(STATE.phase==='rolling')  title.innerHTML = `${n} — tira los dados`;
+    else if(STATE.phase==='main')     title.innerHTML = `${n} — turno principal`;
+    else if(STATE.phase==='discard')  title.innerHTML = `Descartando cartas…`;
+    else if(STATE.phase==='robber')   title.innerHTML = `${n} — mueve el ladrón`;
+    else                              title.innerHTML = `${n}`;
+  }
+
+  // Resources of current player
+  const resEl = document.getElementById('boardPlayerRes');
+  if(resEl){
+    resEl.innerHTML = '';
+    Object.entries(me.resources).forEach(([k,q])=>{
+      if(!q) return;
+      const chip = document.createElement('div');
+      chip.style.cssText = `display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:6px;background:${RESOURCE_INFO[k].color};font-size:12px;font-weight:600;color:#fff`;
+      chip.innerHTML = `${RESOURCE_INFO[k].emoji}<span>${q}</span>`;
+      resEl.appendChild(chip);
+    });
+    if(!Object.values(me.resources).some(v=>v>0)){
+      resEl.innerHTML = '<span style="font-size:11px;color:var(--ink-dim)">Sin recursos</span>';
+    }
+  }
+
+  // Build buttons — only in main phase
+  const isMain = STATE.phase==='main' && !!STATE.lastRoll;
+  const pa = STATE.pendingAction;
+
+  const bSettle  = document.getElementById('bBtnSettlement');
+  const bCity    = document.getElementById('bBtnCity');
+  const bRoad    = document.getElementById('bBtnRoad');
+  const bDev     = document.getElementById('bBtnDev');
+  const bTrade   = document.getElementById('bBtnTrade');
+  const bCancel  = document.getElementById('bBtnCancel');
+
+  if(bSettle){
+    const can = isMain && canAfford(me,COSTS.settlement) &&
+      [...STATE.vertices.values()].some(v=>isVertexValidForSettlement(v.id,me.id,false));
+    bSettle.disabled = !can;
+    bSettle.style.opacity = can?'1':'0.4';
+    bSettle.style.display = STATE.phase==='main'?'':'none';
+  }
+  if(bCity){
+    const can = isMain && canAfford(me,COSTS.city) && me.settlements.length>0;
+    bCity.disabled = !can;
+    bCity.style.opacity = can?'1':'0.4';
+    bCity.style.display = STATE.phase==='main'?'':'none';
+  }
+  if(bRoad){
+    const can = isMain && canAfford(me,COSTS.road) &&
+      [...STATE.edges.values()].some(e=>isEdgeValidForRoad(e.id,me.id,false));
+    bRoad.disabled = !can;
+    bRoad.style.opacity = can?'1':'0.4';
+    bRoad.style.display = STATE.phase==='main'?'':'none';
+  }
+  if(bDev){
+    const can = isMain && canAfford(me,COSTS.dev) && STATE.devDeck.length>0;
+    bDev.disabled = !can;
+    bDev.style.opacity = can?'1':'0.4';
+    bDev.style.display = STATE.phase==='main'?'':'none';
+  }
+  if(bTrade){
+    bTrade.disabled = !isMain;
+    bTrade.style.opacity = isMain?'1':'0.4';
+    bTrade.style.display = STATE.phase==='main'?'':'none';
+  }
+
+  // Cancel button — visible when a placement is pending
+  if(bCancel){
+    const cancellable = pa && pa.playerId===me.id && STATE.phase!=='starting';
+    bCancel.style.display = cancellable ? '' : 'none';
+  }
+
+  // Hide build grid in non-main phases
+  const buildGrid = document.querySelector('#boardActionsSection > div[style*="grid"]');
+  if(buildGrid) buildGrid.style.display = STATE.phase==='main' ? '' : 'none';
+  if(bTrade) bTrade.style.display = STATE.phase==='main' ? '' : 'none';
+
+  // Hint for non-main phases
+  let hintEl = sec.querySelector('.bActHint');
+  if(!hintEl){
+    hintEl = document.createElement('p');
+    hintEl.className = 'bActHint';
+    hintEl.style.cssText = 'font-size:11px;color:var(--ink-dim);text-align:center;margin:6px 0 2px';
+    sec.appendChild(hintEl);
+  }
+  if(STATE.phase==='starting'){
+    const pa2 = STATE.pendingAction;
+    if(pa2 && pa2.playerId===me.id){
+      hintEl.textContent = pa2.type==='place-settlement' ? '👆 Haz clic en un vértice del tablero' : '👆 Haz clic en una arista del tablero';
+    } else {
+      hintEl.textContent = 'Esperando turno…';
+    }
+    hintEl.style.display='';
+  } else if(STATE.phase==='rolling'){
+    hintEl.textContent = '🎲 Tira los dados para comenzar tu turno';
+    hintEl.style.display='';
+  } else if(STATE.phase==='robber'){
+    hintEl.textContent = '🦹 Haz clic en un hexágono para mover el ladrón';
+    hintEl.style.display='';
+  } else if(STATE.phase==='discard'){
+    hintEl.textContent = '🃏 Selecciona las cartas a descartar';
+    hintEl.style.display='';
+  } else {
+    hintEl.style.display='none';
+  }
+}
+
 function renderTurnBanner(){
   const me = STATE.players[STATE.currentPlayerIdx];
   if(!me) return;
@@ -3787,6 +3942,7 @@ function renderAll(){
     renderBoard();
     renderPlayersList();
     renderTurnBanner();
+    renderBoardActions();
     renderRollHistory();
     renderPendingTradeBoard();
     renderRobberBoard();
@@ -7094,6 +7250,26 @@ function bindBoardEvents(){
   document.getElementById('fabExitProjector').onclick = toggleProjectorMode;
   document.getElementById('fabRollP').onclick = rollDice;
   document.getElementById('fabEndTurn').onclick = endTurn;
+
+  // Board action panel (local play)
+  document.getElementById('bBtnSettlement').onclick = ()=>{
+    const p = STATE.players[STATE.currentPlayerIdx];
+    if(p && !p.isBot) requestBuild(p.id, 'settlement');
+  };
+  document.getElementById('bBtnCity').onclick = ()=>{
+    const p = STATE.players[STATE.currentPlayerIdx];
+    if(p && !p.isBot) requestBuild(p.id, 'city');
+  };
+  document.getElementById('bBtnRoad').onclick = ()=>{
+    const p = STATE.players[STATE.currentPlayerIdx];
+    if(p && !p.isBot) requestBuild(p.id, 'road');
+  };
+  document.getElementById('bBtnDev').onclick = ()=>{
+    const p = STATE.players[STATE.currentPlayerIdx];
+    if(p && !p.isBot) requestBuild(p.id, 'dev');
+  };
+  document.getElementById('bBtnTrade').onclick = openTradeModal;
+  document.getElementById('bBtnCancel').onclick = cancelPlacement;
 
   // Pair modal close
   document.getElementById('btnClosePair').onclick = ()=>{
