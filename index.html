@@ -2809,17 +2809,28 @@ function renderBoard(){
     g.setAttribute('class','hex hex-'+h.terrain);
     g.dataset.q = h.q; g.dataset.r = h.r;
 
+    // Glow ring: hex ligeramente mayor con stroke coloreado semitransparente
+    const glowRing = document.createElementNS('http://www.w3.org/2000/svg','path');
+    glowRing.setAttribute('d', hexPath(p.x, p.y, STATE.size*1.0));
+    glowRing.setAttribute('fill', 'none');
+    glowRing.setAttribute('stroke', terrainBorderColor(h.terrain));
+    glowRing.setAttribute('stroke-width', '6');
+    glowRing.setAttribute('opacity', '0.35');
+    glowRing.setAttribute('pointer-events','none');
+    g.appendChild(glowRing);
+
+    // Relleno sólido + borde coloreado nítido
     const path = document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d', hexPath(p.x, p.y, STATE.size*0.985));
     path.setAttribute('fill', `url(#tex${cap(h.terrain)})`);
-    path.setAttribute('stroke', 'rgba(255,255,255,0.10)');
-    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke', terrainBorderColor(h.terrain));
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('stroke-opacity', '0.75');
     g.appendChild(path);
 
-    // Icono de terreno centrado (único por hex)
-    // scale(1.35): 60px × 1.35 = 81px efectivos — visible alrededor del token de número
+    // Ícono en la mitad superior del hex (desplazado -28px arriba)
     const iconG = document.createElementNS('http://www.w3.org/2000/svg','g');
-    iconG.setAttribute('transform', `translate(${p.x},${p.y}) scale(1.35) translate(-30,-30)`);
+    iconG.setAttribute('transform', `translate(${p.x},${p.y - 28}) scale(1.1) translate(-30,-30)`);
     iconG.setAttribute('pointer-events','none');
     iconG.innerHTML = getTerrainIcon(h.terrain);
     g.appendChild(iconG);
@@ -2829,7 +2840,8 @@ function renderBoard(){
     g.addEventListener('click', ()=>onHexClick(h));
 
     if(h.number){
-      g.appendChild(makeNumberToken(p.x, p.y, h.number));
+      // Número en la mitad inferior (+28px abajo) — no tapa el ícono
+      g.appendChild(makeNumberToken(p.x, p.y + 28, h.number));
     }
     gBoard.appendChild(g);
   });
@@ -3400,6 +3412,19 @@ function desertIcons(){return `
   <circle cx="30" cy="7"  r="1"   fill="#C8C8FF" opacity="0.50"/>
   <circle cx="50" cy="12" r="1.8" fill="#C8C8FF" opacity="0.58"/>
 `}
+
+/* ─── HELPER: terreno → color de borde glow ─────────────────────── */
+function terrainBorderColor(terrain){
+  switch(terrain){
+    case 'forest':   return '#5AADFF'; // Titanio — azul acero
+    case 'pasture':  return '#22E878'; // Biotech  — verde
+    case 'field':    return '#FFD000'; // Energía  — dorado
+    case 'mountain': return '#B070FF'; // Cristales— violeta
+    case 'hill':     return '#FF5820'; // Nano     — naranja
+    case 'desert':   return '#8860CC'; // Muerta   — púrpura
+    default:         return 'rgba(255,255,255,0.12)';
+  }
+}
 
 /* ─── HELPER: terreno → icono SVG ────────────────────────────────── */
 function getTerrainIcon(terrain){
