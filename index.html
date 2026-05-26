@@ -2554,16 +2554,17 @@ function getBestTradeRate(player, resource){
 }
 
 function proposeTrade(playerId, give, want){
-  if(STATE.phase !== 'main') return toast('Solo en fase principal', true);
-  if(STATE.players[STATE.currentPlayerIdx].id !== playerId) return toast('No es tu turno', true);
-  if(give.res === want.res) return toast('Selecciona recursos diferentes', true);
-  if(!give.qty || !want.qty) return toast('Cantidades inválidas', true);
+  if(STATE.phase !== 'main'){ toast('Solo en fase principal', true); return false; }
+  if(STATE.players[STATE.currentPlayerIdx].id !== playerId){ toast('No es tu turno', true); return false; }
+  if(give.res === want.res){ toast('Selecciona recursos diferentes', true); return false; }
+  if(!give.qty || !want.qty){ toast('Cantidades inválidas', true); return false; }
   const me = STATE.players.find(p=>p.id===playerId);
-  if((me.resources[give.res]||0) < give.qty) return toast(`No tienes suficiente ${RESOURCE_INFO[give.res].name}`, true);
+  if((me.resources[give.res]||0) < give.qty){ toast(`No tienes suficiente ${RESOURCE_INFO[give.res].name}`, true); return false; }
   STATE.pendingTrade = {proposerId: playerId, give, want};
   logEvent(`${me.name} propone: ${give.qty} ${RESOURCE_INFO[give.res].name} ↔ ${want.qty} ${RESOURCE_INFO[want.res].name}`, me.color);
   renderAll();
   broadcastState();
+  return true;
 }
 
 function acceptTrade(acceptorId){
@@ -8079,10 +8080,10 @@ function bindBoardEvents(){
   document.getElementById('btnConfirmPlayerTrade').onclick = ()=>{
     const give = {res: document.getElementById('ptGiveRes').value, qty: +document.getElementById('ptGiveQty').value};
     const want = {res: document.getElementById('ptWantRes').value, qty: +document.getElementById('ptWantQty').value};
-    if(give.res === want.res) return toast('El recurso ofrecido y pedido no pueden ser el mismo', true);
     const me = STATE.players[STATE.currentPlayerIdx];
-    if(me) proposeTrade(me.id, give, want);
-    document.getElementById('playerTradeModal').classList.add('hidden');
+    if(!me) return;
+    const ok = proposeTrade(me.id, give, want);
+    if(ok) document.getElementById('playerTradeModal').classList.add('hidden');
   };
   document.getElementById('btnCancelDevCard').onclick = ()=>{ document.getElementById('devCardModal').classList.add('hidden'); };
 
@@ -8206,11 +8207,12 @@ function bindRemoteEvents(){
     const want = {res: document.getElementById('ptWantRes').value, qty: +document.getElementById('ptWantQty').value};
     if(STATE.appMode === 'board'){
       const me = STATE.players[STATE.currentPlayerIdx];
-      if(me) proposeTrade(me.id, give, want);
+      if(me && proposeTrade(me.id, give, want))
+        document.getElementById('playerTradeModal').classList.add('hidden');
     } else {
       sendAction({type:'trade-propose', deviceId:STATE.myDeviceId, give, want});
+      document.getElementById('playerTradeModal').classList.add('hidden');
     }
-    document.getElementById('playerTradeModal').classList.add('hidden');
   };
   document.getElementById('btnCancelPlayerTrade').onclick = ()=>{
     document.getElementById('playerTradeModal').classList.add('hidden');
