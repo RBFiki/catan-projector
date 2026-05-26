@@ -3259,45 +3259,85 @@ function renderRemote(){
   const discardEl = document.getElementById('rDiscardBanner');
   const myDiscard = STATE.discardQueue?.[me.id];
   if(myDiscard){
-    document.getElementById('rDiscardLabel').textContent = `Descarta ${myDiscard} carta${myDiscard!==1?'s':''} (tienes ${totalRes})`;
+    // Inicializar selección si es la primera vez o si el jugador fue agregado de nuevo a la cola
+    if(!discardEl._discardMyId || discardEl._discardMyId !== me.id || !discardEl._discardSel){
+      discardEl._discardMyId = me.id;
+      discardEl._discardSel = {};
+    }
+    const sel = discardEl._discardSel;
+
+    function refreshDiscardUI(){
+      const selTotal = Object.values(sel).reduce((a,b)=>a+b,0);
+      const remaining = myDiscard - selTotal;
+      document.getElementById('rDiscardLabel').textContent =
+        remaining > 0
+          ? `Descarta ${myDiscard} carta${myDiscard!==1?'s':''} — faltan ${remaining}`
+          : `✓ Listo para descartar ${selTotal} carta${selTotal!==1?'s':''}`;
+
+      // Actualizar contadores y botones de cada recurso
+      Object.keys(RESOURCE_INFO).forEach(k=>{
+        const countEl = document.getElementById(`rds-count-${k}`);
+        const btnPlus  = document.getElementById(`rds-plus-${k}`);
+        const btnMinus = document.getElementById(`rds-minus-${k}`);
+        if(!countEl) return;
+        const cur = sel[k]||0;
+        const max = me.resources[k]||0;
+        countEl.textContent = cur;
+        countEl.style.color = cur > 0 ? '#fbbf24' : 'rgba(255,255,255,0.5)';
+        const plusDisabled  = (cur >= max) || (selTotal >= myDiscard);
+        const minusDisabled = cur <= 0;
+        if(btnPlus){  btnPlus.disabled  = plusDisabled;  btnPlus.style.opacity  = plusDisabled  ? '0.25' : '1'; btnPlus.style.cursor  = plusDisabled  ? 'default' : 'pointer'; }
+        if(btnMinus){ btnMinus.disabled = minusDisabled; btnMinus.style.opacity = minusDisabled ? '0.25' : '1'; btnMinus.style.cursor = minusDisabled ? 'default' : 'pointer'; }
+      });
+
+      const confirmBtn = document.getElementById('rBtnConfirmDiscard');
+      if(confirmBtn){
+        const ready = selTotal === myDiscard;
+        confirmBtn.textContent = ready ? `☠ Descartar ${selTotal} carta${selTotal!==1?'s':''}` : `Selecciona ${myDiscard - selTotal} más`;
+        confirmBtn.disabled = !ready;
+        confirmBtn.style.opacity = ready ? '1' : '0.45';
+        confirmBtn.style.cursor  = ready ? 'pointer' : 'default';
+      }
+    }
+
     const body = document.getElementById('rDiscardBody');
-    // Construir UI de descarte si no existe o regenerar
-    if(!discardEl._discardState || JSON.stringify(discardEl._discardState) !== JSON.stringify(me.resources)){
-      discardEl._discardState = {...me.resources};
-      discardEl._discardSel = {};  // selección acumulada
+    // Construir UI de descarte solo si aún no existe (evita reset por re-renders)
+    if(!discardEl._discardBuilt){
+      discardEl._discardBuilt = true;
       body.innerHTML = '';
-      const grid = document.createElement('div');
-      grid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:4px';
+      const rows = document.createElement('div');
+      rows.style.cssText = 'display:flex;flex-direction:column;gap:7px;margin-bottom:4px';
       Object.entries(RESOURCE_INFO).forEach(([k,info])=>{
         const q = me.resources[k]||0;
         if(!q) return;
-        const btn = document.createElement('div');
-        btn.style.cssText = `background:${info.color};border-radius:6px;padding:6px 0;text-align:center;cursor:pointer;user-select:none;position:relative`;
-        btn.dataset.res = k;
-        btn.dataset.max = q;
-        btn.innerHTML = `<div style="font-size:13px">${info.emoji}</div><div id="rds-${k}" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#fff">${q}</div>`;
-        btn.addEventListener('click', ()=>{
-          const sel = discardEl._discardSel;
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px';
+        row.innerHTML = `
+          <div style="width:26px;height:26px;border-radius:6px;background:${info.color};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${info.emoji}</div>
+          <div style="flex:1;font-size:12px;color:rgba(255,255,255,0.8)">${info.name||k} <span style="color:rgba(255,255,255,0.4)">(tienes ${q})</span></div>
+          <button id="rds-minus-${k}" style="width:28px;height:28px;border-radius:5px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1" disabled>−</button>
+          <div id="rds-count-${k}" style="width:22px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:rgba(255,255,255,0.5)">0</div>
+          <button id="rds-plus-${k}" style="width:28px;height:28px;border-radius:5px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">+</button>`;
+        row.querySelector(`#rds-minus-${k}`).addEventListener('click', ()=>{
+          if((sel[k]||0) > 0){ sel[k]--; refreshDiscardUI(); }
+        });
+        row.querySelector(`#rds-plus-${k}`).addEventListener('click', ()=>{
           const cur = sel[k]||0;
           const max = me.resources[k]||0;
-          const newVal = cur < max ? cur+1 : 0;
-          sel[k] = newVal;
-          const remaining = q - newVal;
-          btn.querySelector(`#rds-${k}`).textContent = remaining;
-          btn.style.opacity = newVal>0 ? '0.5' : '1';
           const selTotal = Object.values(sel).reduce((a,b)=>a+b,0);
-          document.getElementById('rBtnConfirmDiscard').textContent = `Descartar ${selTotal}/${myDiscard}`;
+          if(cur < max && selTotal < myDiscard){ sel[k] = cur+1; refreshDiscardUI(); }
         });
-        grid.appendChild(btn);
+        rows.appendChild(row);
       });
-      body.appendChild(grid);
-      body.insertAdjacentHTML('beforeend','<div style="font-size:10px;color:rgba(255,255,255,0.5);text-align:center">Toca cada recurso para seleccionarlo · toca de nuevo para deseleccionar</div>');
+      body.appendChild(rows);
     }
+    refreshDiscardUI();
     discardEl.style.display = 'flex';
   } else {
     discardEl.style.display = 'none';
-    discardEl._discardState = null;
-    discardEl._discardSel = {};
+    discardEl._discardBuilt = false;
+    discardEl._discardMyId  = null;
+    discardEl._discardSel   = {};
   }
 
   // Banner: elegir víctima del ladrón
@@ -6810,8 +6850,14 @@ function bindRemoteEvents(){
     const sel = discardEl._discardSel || {};
     const total = Object.values(sel).reduce((a,b)=>a+b,0);
     const needed = STATE.discardQueue?.[STATE.myPlayerId];
-    if(total !== needed){ toast(`Selecciona exactamente ${needed} cartas`, true); return; }
-    sendAction({type:'discard', selection: sel, deviceId: STATE.myDeviceId});
+    if(!needed || total !== needed){
+      // Safety net — should not reach here since button is disabled when not ready
+      toast(`Selecciona exactamente ${needed||'?'} cartas`, true);
+      return;
+    }
+    // Filter out zero-valued entries before sending
+    const cleanSel = Object.fromEntries(Object.entries(sel).filter(([,v])=>v>0));
+    sendAction({type:'discard', selection: cleanSel, deviceId: STATE.myDeviceId});
   };
 
   document.getElementById('btnCloseTrade').onclick = ()=>{
