@@ -1734,6 +1734,7 @@ function startGame(opts){
     id:'p'+i,
     color:p.color, name:p.name,
     isBot: !!p.isBot,
+    botDifficulty: p.botDifficulty || 'medium',
     vp:0, resources:{wood:0,wool:0,wheat:0,ore:0,brick:0},
     devCards:[], devCardsBoughtThisTurn:[],
     settlements:[], cities:[], roads:[],
@@ -3009,7 +3010,7 @@ function renderPlayersList(){
         <div style="width:18px;height:18px;border-radius:50%;background:${PLAYER_COLORS[p.color].hex};border:1.5px solid rgba(255,255,255,0.2);flex:0 0 18px;position:relative">
           ${p.connected?'<div style="position:absolute;right:-2px;bottom:-2px;width:7px;height:7px;border-radius:50%;background:var(--green-ok);border:1.5px solid var(--bg-1)"></div>':''}
         </div>
-        <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${p.name}${p.isBot?'<span style="font-size:10px;color:rgba(34,197,94,0.7);margin-left:4px">🤖</span>':''}</div>
+        <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${p.name}${p.isBot?`<span style="font-size:9px;color:rgba(255,255,255,0.35);margin-left:4px">${{easy:'😴',medium:'🤖',hard:'💀'}[p.botDifficulty||'medium']}</span>`:''}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold-soft);font-weight:600">${totalVP}<span style="font-size:9px;color:var(--ink-dim);margin-left:2px">PV</span></div>
       </div>
     `;
@@ -3122,9 +3123,20 @@ function renderRemote(){
   const me = STATE.players.find(p=>p.id===STATE.myPlayerId);
   if(!me){
     document.getElementById('rMeName').textContent = 'Sin asignar';
+    const s = document.getElementById('rConnStatus');
+    if(s && !s.textContent.includes('⚠')){
+      s.textContent = '⏳ Esperando asignación...';
+      s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.8);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2)';
+    }
     return;
   }
 
+  // Assigned — update status chip
+  const s = document.getElementById('rConnStatus');
+  if(s){
+    s.textContent = '● Conectado';
+    s.style.cssText = 'font-size:11px;color:rgba(34,197,94,0.85);padding:2px 8px;border-radius:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25)';
+  }
   document.getElementById('rMeDot').style.background = PLAYER_COLORS[me.color].hex;
   document.getElementById('rMeName').textContent = me.name;
   const totalVP = me.vp + (me._lrBonus||0) + (me._laBonus||0);
@@ -3555,6 +3567,13 @@ function _bestCityVertex(pid){
 
 // Mover ladrón al mejor hex (perjudicar oponente con más PV / recursos)
 function _botRobber(player){
+  const diff = player.botDifficulty || 'medium';
+  // Fácil: mover ladrón a un hex aleatorio válido
+  if(diff==='easy'){
+    const candidates=STATE.hexes.filter(h=>h.terrain!=='sea'&&hexKey(h.q,h.r)!==STATE.robberHex);
+    if(candidates.length){ const h=candidates[Math.floor(Math.random()*candidates.length)]; moveRobber(hexKey(h.q,h.r),player.id); }
+    return;
+  }
   let bestHex=null, bestScore=-Infinity;
   STATE.hexes.forEach(h=>{
     if(h.terrain==='sea') return;
@@ -3605,34 +3624,81 @@ function _botBankTrade(player){
   return false;
 }
 
-// Fase principal del bot
+// Fase principal del bot — varía según dificultad
 function _botMain(player){
+  const diff = player.botDifficulty || 'medium';
+
+  // ── FÁCIL: toma decisiones aleatorias / subóptimas ─────────────────
+  if(diff === 'easy'){
+    // 40% de chance de solo tirar y pasar sin construir
+    if(Math.random() < 0.4){ endTurn(); return; }
+    // Construir algo al azar de lo que puede pagar
+    const options = [];
+    if(canAfford(player,COSTS.road)&&player.roads.length<8){
+      const e=[...STATE.edges.values()].find(ed=>isEdgeValidForRoad(ed.id,player.id,false));
+      if(e) options.push(()=>requestBuild(player.id,'road'));
+    }
+    if(canAfford(player,COSTS.settlement)){
+      const spot=[...STATE.vertices.values()].find(v=>isVertexValidForSettlement(v.id,player.id,false));
+      if(spot) options.push(()=>requestBuild(player.id,'settlement'));
+    }
+    if(canAfford(player,COSTS.city)&&player.settlements.length>0)
+      options.push(()=>requestBuild(player.id,'city'));
+    if(options.length){
+      options[Math.floor(Math.random()*options.length)]();
+      return;
+    }
+    endTurn(); return;
+  }
+
+  // ── NORMAL (medium) y DIFÍCIL: lógica greedy ───────────────────────
   // 1. Ciudad
   if(canAfford(player,COSTS.city)&&player.settlements.length>0){
     requestBuild(player.id,'city'); return;
   }
-  // 2. Poblado (si hay sitio)
+  // 2. Poblado
   if(canAfford(player,COSTS.settlement)){
     const spot=[...STATE.vertices.values()].find(v=>isVertexValidForSettlement(v.id,player.id,false));
     if(spot){ requestBuild(player.id,'settlement'); return; }
   }
-  // 3. Carta de desarrollo
-  if(canAfford(player,COSTS.dev)&&STATE.devDeck.length>0&&player.vp>=2&&!STATE.devCardPlayedThisTurn){
+  // 3. Carta de desarrollo (hard también compra más)
+  const devThreshold = diff==='hard' ? 1 : 2;
+  if(canAfford(player,COSTS.dev)&&STATE.devDeck.length>0&&player.vp>=devThreshold&&!STATE.devCardPlayedThisTurn){
     requestBuild(player.id,'dev'); return;
   }
-  // 4. Carretera (solo si tiene menos de 12 y puede expandirse)
-  if(canAfford(player,COSTS.road)&&player.roads.length<12){
+  // 4. Carretera
+  const maxRoads = diff==='hard' ? 15 : 12;
+  if(canAfford(player,COSTS.road)&&player.roads.length<maxRoads){
     const e=[...STATE.edges.values()].find(ed=>isEdgeValidForRoad(ed.id,player.id,false));
     if(e){ requestBuild(player.id,'road'); return; }
   }
-  // 5. Jugar caballero si tiene y hay oponente con muchos recursos
+  // 5. Caballero — hard juega más agresivamente
   if(!STATE.devCardPlayedThisTurn&&player.devCards.includes('knight')){
-    const threat=STATE.players.some(p=>p.id!==player.id&&(p.vp>=7||_totRes(p)>=9));
+    const vpThreshold = diff==='hard' ? 5 : 7;
+    const threat=STATE.players.some(p=>p.id!==player.id&&(p.vp>=vpThreshold||_totRes(p)>=9));
     if(threat){ playDevCard(player.id,'knight'); return; }
   }
-  // 6. Comercio con banco
+  // 6. Monopolio / Año de Cosecha (hard)
+  if(diff==='hard'&&!STATE.devCardPlayedThisTurn){
+    if(player.devCards.includes('plenty')){
+      // Tomar los 2 recursos más escasos para la próxima compra
+      const needs=Object.entries(COSTS.city).sort((a,b)=>(player.resources[a[0]]||0)-(player.resources[b[0]]||0));
+      playDevCard(player.id,'plenty',{res1:needs[0][0],res2:needs[1]?needs[1][0]:needs[0][0]});
+      return;
+    }
+    if(player.devCards.includes('monopoly')){
+      // Robar el recurso más común entre oponentes
+      const counts={};
+      STATE.players.filter(p=>p.id!==player.id).forEach(p=>{
+        Object.entries(p.resources).forEach(([r,q])=>{ counts[r]=(counts[r]||0)+q; });
+      });
+      const best=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+      if(best&&best[1]>1){ playDevCard(player.id,'monopoly',{res:best[0]}); return; }
+    }
+  }
+  // 7. Comercio con banco
   if(_botBankTrade(player)) return;
-  // 7. Fin de turno
+  // 8. Fin de turno
   endTurn();
 }
 
@@ -4061,18 +4127,28 @@ function sendAction(action){
 
 function handleRemoteAction(action){
   if(action.type==='remote-hello'){
-    // Asignar este device a algún jugador sin asignar
-    const free = STATE.players.find(p=>!p.deviceId);
-    if(free){
-      free.deviceId = action.deviceId;
-      free.connected = true;
-      logEvent(`${free.name} conectó su celular`, free.color);
+    // Reasignar si este device ya estaba asignado (reconexión)
+    let existing = STATE.players.find(p=>p.deviceId===action.deviceId && !p.isBot);
+    if(!existing){
+      // Asignar al primer jugador humano libre (sin deviceId y sin ser bot)
+      existing = STATE.players.find(p=>!p.deviceId && !p.isBot);
+    }
+    if(existing){
+      existing.deviceId = action.deviceId;
+      existing.connected = true;
+      logEvent(`${existing.name} conectó su celular`, existing.color);
       broadcastState();
-      // Confirmar al cliente cuál es su id
-      const asgMsg = {type:'assign', payload:{deviceId:action.deviceId, playerId:free.id}};
+      // Confirmar al cliente cuál es su player id
+      const asgMsg = {type:'assign', payload:{deviceId:action.deviceId, playerId:existing.id}};
       if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(asgMsg));
       peerSend(asgMsg);
       if(bcastChannel) bcastChannel.postMessage(asgMsg);
+    } else {
+      // No hay jugadores humanos disponibles → informar
+      const errMsg = {type:'assign-error', payload:{reason:'no_free_slot'}};
+      if(wsConn && wsConn.readyState===WebSocket.OPEN) wsConn.send(JSON.stringify(errMsg));
+      peerSend(errMsg);
+      if(bcastChannel) bcastChannel.postMessage(errMsg);
     }
     return;
   }
@@ -4112,9 +4188,16 @@ function handleSyncMessageRemote(msg){
   if(msg && msg.type==='assign' && STATE.appMode==='remote'){
     if(msg.payload.deviceId===STATE.myDeviceId){
       STATE.myPlayerId = msg.payload.playerId;
-      toast('¡Conectado!');
+      const player = STATE.players.find(p=>p.id===STATE.myPlayerId);
+      toast(`¡Conectado como ${player?.name||'Jugador'}!`);
+      document.getElementById('rConnStatus')?.remove();
       renderRemote();
     }
+    return;
+  }
+  if(msg && msg.type==='assign-error' && STATE.appMode==='remote'){
+    const s = document.getElementById('rConnStatus');
+    if(s) s.textContent = '⚠ No hay ranuras de jugador humano disponibles en esta partida.';
     return;
   }
   // 'restore' en remote: tratar igual que 'state'
@@ -6864,10 +6947,10 @@ const SETUP = {
   gameMode: 'base',
   gameType: 'full',
   players: [
-    {color:'red',    name:'Tú',      isBot:false},
-    {color:'blue',   name:'Bot Azul',  isBot:true},
-    {color:'white',  name:'Bot Blanco',isBot:true},
-    {color:'orange', name:'Bot Naran.', isBot:true},
+    {color:'red',    name:'Tú',        isBot:false, botDifficulty:'medium'},
+    {color:'blue',   name:'Bot Azul',  isBot:true,  botDifficulty:'medium'},
+    {color:'white',  name:'Bot Blanco',isBot:true,  botDifficulty:'medium'},
+    {color:'orange', name:'Bot Naran.',isBot:true,  botDifficulty:'medium'},
   ]
 };
 
@@ -6878,13 +6961,21 @@ function renderPlayerSetup(){
     const row = document.createElement('div');
     row.className='player-setup-row';
     const botActive = p.isBot;
+    const diff = p.botDifficulty || 'medium';
+    const diffLabels = {easy:'😴 Fácil', medium:'🤖 Normal', hard:'💀 Difícil'};
+    const diffColors = {easy:'rgba(34,197,94,0.5)', medium:'rgba(251,191,36,0.6)', hard:'rgba(239,68,68,0.6)'};
+    const diffBg    = {easy:'rgba(34,197,94,0.1)',  medium:'rgba(251,191,36,0.1)', hard:'rgba(239,68,68,0.1)'};
     row.innerHTML = `
       <div class="psr-dot" data-i="${i}" style="background:${PLAYER_COLORS[p.color].hex}"></div>
-      <input class="psr-input" data-i="${i}" type="text" value="${p.name}" style="flex:1"/>
+      <input class="psr-input" data-i="${i}" type="text" value="${p.name}" style="flex:1;min-width:0"/>
       <button class="psr-bot" data-i="${i}" title="${botActive?'Convertir en humano':'Convertir en bot'}"
-        style="padding:3px 8px;border-radius:5px;border:1px solid ${botActive?'rgba(34,197,94,0.6)':'rgba(255,255,255,0.15)'};background:${botActive?'rgba(34,197,94,0.18)':'rgba(255,255,255,0.05)'};color:${botActive?'#4ade80':'rgba(255,255,255,0.45)'};cursor:pointer;font-size:13px;line-height:1;white-space:nowrap">
-        🤖
+        style="padding:3px 7px;border-radius:5px;border:1px solid ${botActive?'rgba(34,197,94,0.6)':'rgba(255,255,255,0.15)'};background:${botActive?'rgba(34,197,94,0.18)':'rgba(255,255,255,0.05)'};color:${botActive?'#4ade80':'rgba(255,255,255,0.45)'};cursor:pointer;font-size:12px;line-height:1;white-space:nowrap">
+        ${botActive?'🤖':'👤'}
       </button>
+      ${botActive ? `<button class="psr-diff" data-i="${i}" title="Cambiar dificultad"
+        style="padding:3px 7px;border-radius:5px;border:1px solid ${diffColors[diff]};background:${diffBg[diff]};color:#fff;cursor:pointer;font-size:10px;line-height:1;white-space:nowrap">
+        ${diffLabels[diff]}
+      </button>` : ''}
       <button class="psr-rm" data-i="${i}" title="Eliminar">×</button>
     `;
     wrap.appendChild(row);
@@ -6909,10 +7000,19 @@ function renderPlayerSetup(){
     b.onclick = ()=>{
       const i=+b.dataset.i;
       SETUP.players[i].isBot = !SETUP.players[i].isBot;
-      // Auto-name bots
-      if(SETUP.players[i].isBot && !SETUP.players[i].name.startsWith('Bot')){
-        SETUP.players[i].name = 'Bot '+PLAYER_COLORS[SETUP.players[i].color].name;
+      if(SETUP.players[i].isBot){
+        if(!SETUP.players[i].name.startsWith('Bot'))
+          SETUP.players[i].name = 'Bot '+PLAYER_COLORS[SETUP.players[i].color].name;
+        SETUP.players[i].botDifficulty = SETUP.players[i].botDifficulty || 'medium';
       }
+      renderPlayerSetup();
+    };
+  });
+  wrap.querySelectorAll('.psr-diff').forEach(b=>{
+    b.onclick = ()=>{
+      const i=+b.dataset.i;
+      const cycle={easy:'medium', medium:'hard', hard:'easy'};
+      SETUP.players[i].botDifficulty = cycle[SETUP.players[i].botDifficulty||'medium'];
       renderPlayerSetup();
     };
   });
@@ -7063,7 +7163,20 @@ function bindRemoteEvents(){
     document.getElementById('remotePairModal').classList.add('hidden');
     initSyncRemote(code);
     wrapRemoteChannel();
-    toast('Conectando...');
+    // Show connecting status
+    const s = document.getElementById('rConnStatus');
+    if(s){
+      s.textContent = '⏳ Conectando al tablero...';
+      s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.8);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2)';
+    }
+    document.getElementById('rMeName').textContent = 'Sin asignar';
+    // Retry hello every 3s until assigned
+    let retryCount = 0;
+    const retryInterval = setInterval(()=>{
+      if(STATE.myPlayerId){ clearInterval(retryInterval); return; }
+      if(retryCount++ > 10){ clearInterval(retryInterval); return; } // stop after 30s
+      sendAction({type:'remote-hello', deviceId:STATE.myDeviceId});
+    }, 3000);
   };
 
   document.getElementById('rBtnRoll').onclick = ()=>{
