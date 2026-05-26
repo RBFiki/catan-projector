@@ -709,7 +709,7 @@ body.remote .toast-item{
 <!-- ============================================================
      MODAL DE INICIO Y CONFIGURACIÓN DE PARTIDA
 ============================================================ -->
-<div id="startModal" class="modal">
+<div id="startModal" class="modal board-only">
   <div class="modal-card">
     <h1>Catan Projector</h1>
     <div class="tag">Edición Jugable · Mesa Digital</div>
@@ -1789,6 +1789,17 @@ function requestBuild(playerId, type){
     return;
   }
 
+  // Verificar que haya al menos un lugar válido antes de entrar en modo colocación
+  if(type === 'settlement'){
+    const any = [...STATE.vertices.values()].some(v => isVertexValidForSettlement(v.id, playerId, false));
+    if(!any) return toast('No hay vértice válido para un poblado (necesitas carretera propia y distancia libre)', true);
+  } else if(type === 'road'){
+    const any = [...STATE.edges.values()].some(e => isEdgeValidForRoad(e.id, playerId, false));
+    if(!any) return toast('No hay arista válida para una carretera', true);
+  } else if(type === 'city'){
+    if(!me.settlements.length) return toast('No tienes poblados para mejorar a ciudad', true);
+  }
+
   // Activar modo colocación
   STATE.pendingAction = {type:'place-'+type, playerId};
   toast('Toca el tablero para colocar', false);
@@ -2688,27 +2699,18 @@ function renderPlayersList(){
       </div>
     `;
 
-    // Breakdown de cartas (siempre visible para el árbitro)
+    // Resumen de cartas: solo totales para no revelar manos (privacidad)
     const resBreakdown = `
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:6px">
-        ${Object.entries(RESOURCE_INFO).map(([k,info])=>{
-          const q = p.resources[k]||0;
-          return `
-            <div style="background:${info.color};border-radius:3px;padding:3px 0;text-align:center;${q===0?'opacity:0.3':''}" title="${info.name}: ${q}">
-              <div style="font-size:9px;line-height:1;color:rgba(255,255,255,0.85)">${info.emoji}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#fff;line-height:1.3">${q}</div>
-            </div>
-          `;
-        }).join('')}
+      <div style="display:flex;gap:8px;margin-bottom:6px;font-size:11px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
+        <span title="Recursos en mano">🎴 <b style="color:var(--ink)">${totalRes}</b></span>
+        <span title="Cartas de desarrollo">📜 <b style="color:var(--ink)">${totalDev}</b></span>
+        <span title="Caballeros jugados">⚔ <b style="color:var(--ink)">${p.knightsPlayed||0}</b></span>
       </div>
     `;
 
-    // Footer: stats
+    // Footer: construcciones
     const footer = `
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
-        <span title="Total cartas">🎴 ${totalRes}</span>
-        <span title="Desarrollo">📜 ${totalDev}</span>
-        <span title="Caballeros jugados">⚔ ${p.knightsPlayed||0}</span>
+      <div style="display:flex;gap:8px;align-items:center;font-size:10px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace">
         <span title="Ruta más larga">🛤 ${p.longestRoad||0}</span>
         <span title="Asentamientos">🏠 ${(p.settlements||[]).length}</span>
         <span title="Ciudades">🏛 ${(p.cities||[]).length}</span>
@@ -2932,7 +2934,11 @@ function renderRemote(){
     const cancelBtn = document.getElementById('rBtnCancelTrade');
     acceptBtn.style.display = !amProposer ? 'flex' : 'none';
     acceptBtn.disabled = !canAccept;
-    cancelBtn.style.display = amProposer ? 'flex' : 'none';
+    acceptBtn.title = !canAccept && !amProposer
+      ? `Necesitas ${STATE.pendingTrade.want.qty} ${RESOURCE_INFO[STATE.pendingTrade.want.res]?.name}`
+      : '';
+    cancelBtn.style.display = 'flex';
+    cancelBtn.textContent = amProposer ? '✕ Cancelar oferta' : '✕ Rechazar';
     tbEl.style.display = 'flex';
   } else {
     tbEl.style.display = 'none';
@@ -2943,18 +2949,20 @@ function renderRemote(){
   others.innerHTML = '';
   STATE.players.filter(p=>p.id!==me.id).forEach(p=>{
     const totalRes = Object.values(p.resources).reduce((a,b)=>a+b,0);
+    const totalDev = (p.devCards||[]).length + (p.devCardsBoughtThisTurn||[]).length;
     const totalVP = p.vp + (p._lrBonus||0) + (p._laBonus||0);
+    const isCurrent = STATE.players[STATE.currentPlayerIdx]?.id === p.id;
     const row = document.createElement('div');
-    row.className = 'other-row';
+    row.className = 'other-row' + (isCurrent ? ' active' : '');
     row.innerHTML = `
-      <div class="o-dot" style="background:${PLAYER_COLORS[p.color].hex}"></div>
-      <div class="o-name">${p.name}</div>
+      <div class="o-dot" style="background:${PLAYER_COLORS[p.color].hex}${isCurrent?';box-shadow:0 0 0 2px var(--gold)':''}"></div>
+      <div class="o-name">${p.name}${isCurrent?' <span style="color:var(--gold-soft);font-size:9px">▶ turno</span>':''}</div>
       <div class="o-stats">
-        <span>🎴${totalRes}</span>
-        <span>📜${p.devCards.length}</span>
-        <span>⚔${p.knightsPlayed}</span>
+        <span title="Recursos en mano">🎴 ${totalRes}</span>
+        <span title="Cartas de desarrollo">📜 ${totalDev}</span>
+        <span title="Caballeros jugados">⚔ ${p.knightsPlayed||0}</span>
       </div>
-      <div class="o-vp">${totalVP}</div>
+      <div class="o-vp">${totalVP}<span style="font-size:9px;color:var(--ink-dim)"> PV</span></div>
     `;
     others.appendChild(row);
   });
@@ -3165,7 +3173,7 @@ function initSyncRemote(code){
 
 function initWebSocket(code, role){
   if(location.protocol !== 'http:') return;
-  const wsUrl = `ws://${location.hostname}:8765`;
+  const wsUrl = `ws://${location.hostname}:9765`;
   function connect(){
     try{
       const ws = new WebSocket(wsUrl);
@@ -3337,7 +3345,7 @@ function handleRemoteAction(action){
   } else if(action.type==='trade-accept'){
     acceptTrade(player.id);
   } else if(action.type==='trade-cancel'){
-    if(STATE.pendingTrade && STATE.pendingTrade.proposerId===player.id) cancelTrade();
+    if(STATE.pendingTrade) cancelTrade();  // cualquier jugador puede cancelar/rechazar
   }
 }
 
@@ -5892,32 +5900,56 @@ function openDevCardModal(cardType){
 function openPlayerTradeModal(){
   const me = STATE.players.find(p=>p.id===STATE.myPlayerId);
   if(!me) return;
-  const resOptions = Object.entries(RESOURCE_INFO)
-    .map(([k,info])=>`<option value="${k}">${info.emoji} ${info.name} (tienes: ${me.resources[k]||0})</option>`)
+
+  // Opciones de recursos: "ofrezco" muestra mis cantidades; "quiero" muestra solo nombre
+  const giveOptions = Object.entries(RESOURCE_INFO)
+    .map(([k,info])=>{
+      const q = me.resources[k]||0;
+      return `<option value="${k}" ${q===0?'disabled':''} >${info.emoji} ${info.name} — tengo ${q}</option>`;
+    }).join('');
+  const wantOptions = Object.entries(RESOURCE_INFO)
+    .map(([k,info])=>`<option value="${k}">${info.emoji} ${info.name}</option>`)
     .join('');
-  const qtyOptions = [1,2,3,4,5].map(n=>`<option value="${n}">${n}</option>`).join('');
+
+  // Cantidades disponibles según recurso seleccionado (se recalcula al cambiar)
+  const maxGive = Math.max(...Object.values(me.resources), 1);
+  const qtyOpts = (max)=> Array.from({length:Math.max(max,1)},(_,i)=>i+1)
+    .map(n=>`<option value="${n}">${n}</option>`).join('');
+
   document.getElementById('playerTradeBody').innerHTML = `
     <div style="display:grid;gap:14px">
       <div>
         <div style="font-size:11px;color:var(--ink-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Yo ofrezco</div>
         <div style="display:flex;gap:8px">
-          <select id="ptGiveRes" style="flex:1;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">${resOptions}</select>
-          <select id="ptGiveQty" style="width:64px;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">${qtyOptions}</select>
+          <select id="ptGiveRes" style="flex:1;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">${giveOptions}</select>
+          <select id="ptGiveQty" style="width:64px;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">${qtyOpts(maxGive)}</select>
         </div>
       </div>
       <div style="text-align:center;color:var(--gold-soft);font-size:22px;line-height:1">↔</div>
       <div>
-        <div style="font-size:11px;color:var(--ink-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Yo quiero</div>
+        <div style="font-size:11px;color:var(--ink-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Yo pido</div>
         <div style="display:flex;gap:8px">
-          <select id="ptWantRes" style="flex:1;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">${resOptions}</select>
-          <select id="ptWantQty" style="width:64px;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">${qtyOptions}</select>
+          <select id="ptWantRes" style="flex:1;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">${wantOptions}</select>
+          <select id="ptWantQty" style="width:64px;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">${qtyOpts(8)}</select>
         </div>
       </div>
     </div>
   `;
-  // Default want to second resource so give≠want
+
+  // Actualizar qty máximo al cambiar el recurso a ofrecer
+  document.getElementById('ptGiveRes').addEventListener('change', ()=>{
+    const res = document.getElementById('ptGiveRes').value;
+    const max = me.resources[res]||1;
+    document.getElementById('ptGiveQty').innerHTML = qtyOpts(max);
+  });
+
+  // Default: give = primer recurso que se tenga, want = diferente
   const keys = Object.keys(RESOURCE_INFO);
-  document.getElementById('ptWantRes').value = keys[1] || keys[0];
+  const firstOwned = keys.find(k=>(me.resources[k]||0)>0) || keys[0];
+  document.getElementById('ptGiveRes').value = firstOwned;
+  document.getElementById('ptGiveQty').innerHTML = qtyOpts(me.resources[firstOwned]||1);
+  document.getElementById('ptWantRes').value = keys.find(k=>k!==firstOwned) || keys[1];
+
   document.getElementById('playerTradeModal').classList.remove('hidden');
 }
 
