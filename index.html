@@ -834,6 +834,58 @@ body.remote .toast-item{
 .winner-stat:last-child{border-right:none}
 .winner-stat-n{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:4px}
 .winner-stat-l{font-size:10px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.6px}
+
+/* ========== AUDIO PANEL ========== */
+#audioPanel{
+  position:fixed;top:54px;right:16px;z-index:400;
+  background:rgba(8,11,18,0.97);border:1px solid rgba(255,255,255,0.12);
+  border-radius:12px;padding:16px 18px;min-width:230px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.85);backdrop-filter:blur(18px);
+  display:none;
+}
+#audioPanel.open{display:block;animation:fadeIn .15s ease}
+.ap-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between}
+.ap-row{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.ap-row:last-child{margin-bottom:0}
+.ap-label{font-size:10px;color:var(--ink-dim);min-width:52px;text-transform:uppercase;letter-spacing:.8px}
+.ap-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;
+  background:rgba(255,255,255,0.12);outline:none;cursor:pointer;}
+.ap-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;
+  border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 0 5px rgba(217,180,106,0.5);}
+.ap-val{font-size:10px;color:var(--gold-soft);font-family:'JetBrains Mono',monospace;min-width:26px;text-align:right}
+#btnAudioMute{background:none;border:1px solid rgba(255,255,255,0.15);border-radius:6px;
+  padding:3px 9px;font-size:11px;cursor:pointer;color:var(--ink-dim);transition:all .2s;}
+#btnAudioMute.muted{border-color:rgba(255,80,80,0.5);color:rgba(255,120,120,0.9);background:rgba(255,40,40,0.08);}
+
+/* ========== BUILDING PLACEMENT POP ========== */
+@keyframes buildPop{
+  0%{opacity:0;transform:scale(0.05)}
+  60%{opacity:1;transform:scale(1.25)}
+  100%{opacity:1;transform:scale(1)}
+}
+.build-pop{animation:buildPop 0.38s cubic-bezier(.17,.67,.36,1.3) forwards}
+
+/* ========== RESOURCE COLLECT FLASH ========== */
+@keyframes resFlash{
+  0%{background:inherit}
+  40%{background:rgba(217,180,106,0.2);box-shadow:0 0 8px rgba(217,180,106,0.3)}
+  100%{background:inherit}
+}
+.res-flash{animation:resFlash 0.6s ease}
+
+/* ========== WINNER CONFETTI ========== */
+@keyframes confettiFall{
+  0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1}
+  75%{opacity:1}
+  100%{transform:translate(var(--cfx),var(--cfy)) rotate(var(--cfr)) scale(0.5);opacity:0}
+}
+.confetti-p{position:fixed;pointer-events:none;z-index:9999;font-size:24px;
+  animation:confettiFall var(--cfd,1.4s) ease-out forwards;}
+
+/* ========== ENHANCED DICE ========== */
+.die.rolling{animation:dieRoll .65s cubic-bezier(.4,1.6,.5,1)}
+.die.rolling-active{font-size:22px;color:rgba(26,20,10,0.6)}
 </style>
 </head>
 <body class="board">
@@ -1150,8 +1202,35 @@ body.remote .toast-item{
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="16" cy="12" r="3"/></svg>
         Proyector
       </button>
+      <button class="btn" id="btnAudio" title="Ajustes de audio">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        🔊
+      </button>
     </div>
   </header>
+
+  <!-- Audio settings panel -->
+  <div id="audioPanel">
+    <div class="ap-title">
+      <span>Audio</span>
+      <button id="btnAudioMute">Silenciar</button>
+    </div>
+    <div class="ap-row">
+      <span class="ap-label">🎵 Música</span>
+      <input type="range" class="ap-slider" id="sliderMusic" min="0" max="1" step="0.05" value="0.35">
+      <span class="ap-val" id="valMusic">35%</span>
+    </div>
+    <div class="ap-row">
+      <span class="ap-label">🔊 Efectos</span>
+      <input type="range" class="ap-slider" id="sliderSfx" min="0" max="1" step="0.05" value="0.8">
+      <span class="ap-val" id="valSfx">80%</span>
+    </div>
+    <div class="ap-row">
+      <span class="ap-label">📢 General</span>
+      <input type="range" class="ap-slider" id="sliderMaster" min="0" max="1" step="0.05" value="0.7">
+      <span class="ap-val" id="valMaster">70%</span>
+    </div>
+  </div>
 
   <!-- ===================== PANEL IZQUIERDO (modo board) ===================== -->
   <aside class="panel left board-only">
@@ -2056,11 +2135,18 @@ function distributeResources(diceTotal){
     // Highlight visual
     highlightHexProduction(hex);
   });
-  // Log
+  // Log + SFX if anyone received resources
+  if(Object.keys(gains).length > 0) AudioEngine.sfx.collect();
   Object.entries(gains).forEach(([pid, g])=>{
     const p = STATE.players.find(x=>x.id===pid);
     const parts = Object.entries(g).map(([k,v])=>`${v} ${RESOURCE_INFO[k].name}`).join(', ');
     logEvent(`${p.name} recibe: ${parts}`, p.color);
+    // Flash the player card
+    setTimeout(()=>{
+      const cards = document.querySelectorAll('.player-card-detailed');
+      STATE.players.forEach((pl,pi)=>{ if(pl.id===pid && cards[pi]) cards[pi].classList.add('res-flash'); });
+      setTimeout(()=>{ cards.forEach(c=>c.classList.remove('res-flash')); }, 700);
+    }, 150);
   });
 }
 
@@ -2109,6 +2195,7 @@ function startGame(opts){
 
   STATE.gameStartTime = Date.now();
   STATE.gameDuration = null;
+  AudioEngine.startMusic();
   startGameTimer();
   logEvent('🚀 ¡Partida iniciada! · Fase de colonización espacial', '#d9b46a');
   renderAll();
@@ -2141,14 +2228,22 @@ function rollDice(){
   STATE.rolls.unshift({d1,d2,sum,t:now()});
   if(STATE.rolls.length>50) STATE.rolls.pop();
 
-  // Animar dados
+  // SFX
+  AudioEngine.sfx.dice();
+
+  // Animar dados con números parpadeantes
   ['die1','die2'].forEach((id,i)=>{
     const e = document.getElementById(id);
     if(!e) return;
     e.classList.remove('rolling');
     void e.offsetWidth;
-    e.classList.add('rolling');
-    setTimeout(()=>{e.textContent = i===0?d1:d2;}, 300);
+    e.classList.add('rolling','rolling-active');
+    const flick = setInterval(()=>{ e.textContent = 1+Math.floor(Math.random()*6); }, 55);
+    setTimeout(()=>{
+      clearInterval(flick);
+      e.classList.remove('rolling-active');
+      e.textContent = i===0?d1:d2;
+    }, 540);
   });
 
   // Flash sobre el tablero
@@ -2156,6 +2251,7 @@ function rollDice(){
 
   setTimeout(()=>{
     if(sum===7){
+      AudioEngine.sfx.robber();
       logEvent(`🎲 ${d1}+${d2}=${sum} · 👾 ¡Space Pirate!`, '#c0392b');
       // Construir cola de descarte — los jugadores eligen manualmente
       STATE.discardQueue = {};
@@ -2257,6 +2353,7 @@ function endTurn(){
   STATE.phase = 'rolling';
   STATE.lastRoll = null;
   STATE.pendingAction = null;
+  AudioEngine.sfx.turn();
   logEvent(`Turno de ${STATE.players[STATE.currentPlayerIdx].name}`, STATE.players[STATE.currentPlayerIdx].color);
   renderAll();
   broadcastState();
@@ -2339,6 +2436,7 @@ function requestBuild(playerId, type){
     } else {
       me.devCardsBoughtThisTurn.push(card);
     }
+    AudioEngine.sfx.devCard();
     logEvent(`${me.name} compra carta de desarrollo`, me.color);
     renderAll();
     broadcastState();
@@ -2431,6 +2529,7 @@ function placeSettlement(vertexId, playerId){
   if(!isStarting){
     payCost(me, COSTS.settlement);
   }
+  AudioEngine.sfx.settle();
   me.settlements.push({vertex:vertexId});
   me.vp++;
   logEvent(`${me.name} construye Base Lunar 🛸`, me.color);
@@ -2457,6 +2556,7 @@ function placeRoad(edgeId, playerId){
   if(!isStarting && STATE.devRoadsLeft === 0){
     payCost(me, COSTS.road);
   }
+  AudioEngine.sfx.road();
   me.roads.push({edge:edgeId});
 
   // Recalcular ruta más larga
@@ -2485,6 +2585,7 @@ function placeCity(vertexId, playerId){
   if(!isVertexValidForCity(vertexId, playerId)){
     return toast('Debes mejorar una de tus Bases Lunares', true);
   }
+  AudioEngine.sfx.city();
   payCost(me, COSTS.city);
   me.settlements = me.settlements.filter(s=>s.vertex!==vertexId);
   me.cities.push({vertex:vertexId});
@@ -2551,6 +2652,7 @@ function stealFrom(robberId, victimId){
   if(cards.length){
     const stolen = cards[Math.floor(Math.random()*cards.length)];
     victim.resources[stolen]--;
+    AudioEngine.sfx.steal();
     robber.resources[stolen]++;
     logEvent(`👾 ${robber.name} saquea 1 carta a ${victim.name}`, robber.color);
   }
@@ -2670,6 +2772,8 @@ function showWinnerPopup(winner, totalVP){
   timeEl.textContent = dur > 0 ? `⏱ Duración de la partida: ${formatDuration(dur)}` : '';
 
   modal.classList.remove('hidden');
+  AudioEngine.sfx.win();
+  setTimeout(()=>launchConfetti(hex), 300);
 
   document.getElementById('btnWinnerNewGame').onclick = ()=>{
     modal.classList.add('hidden');
@@ -2749,6 +2853,7 @@ function acceptTrade(acceptorId){
   proposer.resources[pt.give.res] -= pt.give.qty;
   acceptor.resources[pt.give.res] = (acceptor.resources[pt.give.res]||0) + pt.give.qty;
   acceptor.resources[pt.want.res] -= pt.want.qty;
+  AudioEngine.sfx.trade();
   proposer.resources[pt.want.res] = (proposer.resources[pt.want.res]||0) + pt.want.qty;
   logEvent(`Intercambio: ${proposer.name} da ${pt.give.qty} ${RESOURCE_INFO[pt.give.res].name} · ${acceptor.name} da ${pt.want.qty} ${RESOURCE_INFO[pt.want.res].name}`, proposer.color);
   STATE.pendingTrade = null;
@@ -8187,6 +8292,167 @@ function clearRelayUrl(){
   openPairModal();
 }
 
+/* =============== MÓDULO 22b: AUDIO ENGINE (Web Audio API — procedural) ================ */
+const AudioEngine = (() => {
+  let ctx = null, masterGain, musicGain, sfxGain;
+  let musicNodes = [], musicPlaying = false, musicTimeout = null;
+
+  const CFG = {
+    master: +(localStorage.getItem('aud_master') ?? 0.7),
+    music:  +(localStorage.getItem('aud_music')  ?? 0.35),
+    sfx:    +(localStorage.getItem('aud_sfx')    ?? 0.8),
+    muted:  localStorage.getItem('aud_muted') === 'true',
+  };
+
+  function boot(){
+    if(ctx) return;
+    try {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = ctx.createGain();
+      masterGain.gain.value = CFG.muted ? 0 : CFG.master;
+      masterGain.connect(ctx.destination);
+      musicGain = ctx.createGain();
+      musicGain.gain.value = CFG.music;
+      musicGain.connect(masterGain);
+      sfxGain = ctx.createGain();
+      sfxGain.gain.value = CFG.sfx;
+      sfxGain.connect(masterGain);
+    } catch(e){ ctx = null; }
+  }
+
+  function tone(freq, type, dur, vol, t0, dest){
+    if(!ctx) return;
+    dest = dest || sfxGain;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + Math.min(0.015, dur*0.15));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(dest); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+
+  function noiseBurst(dur, vol, t0){
+    if(!ctx) return;
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    const s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf;
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    s.connect(g); g.connect(sfxGain); s.start(t0); s.stop(t0+dur+0.05);
+  }
+
+  const sfx = {
+    click(){  try{ boot(); const t=ctx.currentTime; tone(700,'sine',0.07,0.12,t); tone(1050,'sine',0.04,0.08,t+0.04); }catch(e){} },
+    dice(){   try{ boot(); const t=ctx.currentTime;
+                for(let i=0;i<10;i++) tone(180+Math.random()*320,'square',0.032,0.07,t+i*0.052);
+                tone(200,'sine',0.25,0.28,t+0.55); tone(300,'sine',0.2,0.22,t+0.6); }catch(e){} },
+    settle(){ try{ boot(); const t=ctx.currentTime;
+                [440,554,659].forEach((f,i)=>tone(f,'sine',0.38,0.22,t+i*0.07));
+                tone(880,'sine',0.18,0.15,t+0.26); }catch(e){} },
+    road(){   try{ boot(); const t=ctx.currentTime;
+                const o=ctx.createOscillator(),g=ctx.createGain();
+                o.type='sawtooth'; o.frequency.setValueAtTime(480,t); o.frequency.exponentialRampToValueAtTime(110,t+0.22);
+                g.gain.setValueAtTime(0.18,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
+                o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+0.25); }catch(e){} },
+    city(){   try{ boot(); const t=ctx.currentTime;
+                [440,554,659,880].forEach((f,i)=>tone(f,'sine',0.45,0.24,t+i*0.055));
+                tone(1320,'triangle',0.5,0.18,t+0.28); }catch(e){} },
+    collect(){ try{ boot(); const t=ctx.currentTime; tone(880,'sine',0.12,0.2,t); tone(1100,'triangle',0.1,0.12,t+0.07); }catch(e){} },
+    robber(){ try{ boot(); const t=ctx.currentTime;
+                const o=ctx.createOscillator(),g=ctx.createGain();
+                o.type='sawtooth'; o.frequency.setValueAtTime(130,t); o.frequency.setValueAtTime(80,t+0.22);
+                g.gain.setValueAtTime(0.3,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.7);
+                o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+0.72);
+                noiseBurst(0.08,0.1,t); }catch(e){} },
+    steal(){  try{ boot(); const t=ctx.currentTime;
+                const o=ctx.createOscillator(),g=ctx.createGain();
+                o.type='triangle'; o.frequency.setValueAtTime(900,t); o.frequency.exponentialRampToValueAtTime(180,t+0.28);
+                g.gain.setValueAtTime(0.28,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.28);
+                o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+0.3); }catch(e){} },
+    devCard(){ try{ boot(); const t=ctx.currentTime; noiseBurst(0.1,0.16,t); tone(440,'sine',0.12,0.16,t+0.06); tone(660,'sine',0.1,0.1,t+0.13); }catch(e){} },
+    trade(){  try{ boot(); const t=ctx.currentTime; tone(660,'sine',0.18,0.22,t); tone(880,'triangle',0.16,0.2,t+0.11); tone(1100,'sine',0.12,0.14,t+0.2); }catch(e){} },
+    turn(){   try{ boot(); const t=ctx.currentTime; tone(523,'sine',0.18,0.22,t); tone(659,'sine',0.14,0.18,t+0.09); }catch(e){} },
+    win(){    try{ boot(); const t=ctx.currentTime;
+                const m=[523,659,784,1047,784,1047,1319,1047,784,659,523];
+                m.forEach((f,i)=>{ tone(f,'sine',0.35,0.28,t+i*0.11); if(i%3===0) tone(f/2,'sine',0.2,0.18,t+i*0.11); }); }catch(e){} },
+  };
+
+  /* ─── Space ambient music ─── */
+  const CHORDS = [[130.8,164.8,196],[138.6,174.6,207.6],[116.5,146.8,174.6],[123.5,155.6,185]];
+
+  function _chord(idx){
+    if(!musicPlaying || !ctx) return;
+    const ch = CHORDS[idx % CHORDS.length];
+    const t0 = ctx.currentTime + 0.05;
+    // Pad voices with slow LFO vibrato
+    ch.forEach((freq, vi)=>{
+      const o=ctx.createOscillator(), lfo=ctx.createOscillator(), lG=ctx.createGain(), env=ctx.createGain();
+      o.type='sine'; o.frequency.value=freq;
+      lfo.type='sine'; lfo.frequency.value=0.22+vi*0.06; lG.gain.value=1.5;
+      env.gain.setValueAtTime(0,t0); env.gain.linearRampToValueAtTime(0.062,t0+2.5);
+      env.gain.linearRampToValueAtTime(0.05,t0+6); env.gain.linearRampToValueAtTime(0,t0+8.2);
+      lfo.connect(lG); lG.connect(o.frequency); o.connect(env); env.connect(musicGain);
+      lfo.start(t0); o.start(t0); o.stop(t0+8.3); lfo.stop(t0+8.3);
+      musicNodes.push(o,lfo);
+    });
+    // Arpeggio sparkles
+    [2,2.5,3,4,3,2.5].forEach((m,ai)=>{
+      const f = ch[ai%ch.length]*m;
+      const ao=ctx.createOscillator(), ae=ctx.createGain();
+      ao.type='triangle'; ao.frequency.value=f;
+      const at = t0+ai*0.55+(idx%2)*0.28;
+      ae.gain.setValueAtTime(0,at); ae.gain.linearRampToValueAtTime(0.026,at+0.04); ae.gain.exponentialRampToValueAtTime(0.0001,at+0.5);
+      ao.connect(ae); ae.connect(musicGain); ao.start(at); ao.stop(at+0.55);
+      musicNodes.push(ao);
+    });
+    // Bass
+    const bass=ctx.createOscillator(), bE=ctx.createGain();
+    bass.type='sine'; bass.frequency.value=ch[0]*0.5;
+    bE.gain.setValueAtTime(0,t0); bE.gain.linearRampToValueAtTime(0.11,t0+1);
+    bE.gain.linearRampToValueAtTime(0.08,t0+5); bE.gain.linearRampToValueAtTime(0,t0+8.2);
+    bass.connect(bE); bE.connect(musicGain); bass.start(t0); bass.stop(t0+8.3);
+    musicNodes.push(bass);
+    musicTimeout = setTimeout(()=>_chord(idx+1), 8000);
+  }
+
+  function startMusic(){
+    try { boot(); if(musicPlaying||!ctx) return; musicPlaying=true; _chord(0); } catch(e){}
+  }
+  function stopMusic(){
+    musicPlaying=false; clearTimeout(musicTimeout);
+    musicNodes.forEach(n=>{ try{n.stop(0);}catch(e){} }); musicNodes=[];
+  }
+  function setMaster(v){ CFG.master=v; localStorage.setItem('aud_master',v);
+    try{ if(masterGain&&!CFG.muted) masterGain.gain.setTargetAtTime(v,ctx.currentTime,0.1); }catch(e){} }
+  function setMusic(v){ CFG.music=v; localStorage.setItem('aud_music',v);
+    try{ if(musicGain) musicGain.gain.setTargetAtTime(v,ctx.currentTime,0.1); }catch(e){} }
+  function setSfx(v){ CFG.sfx=v; localStorage.setItem('aud_sfx',v);
+    try{ if(sfxGain) sfxGain.gain.setTargetAtTime(v,ctx.currentTime,0.1); }catch(e){} }
+  function toggleMute(){ CFG.muted=!CFG.muted; localStorage.setItem('aud_muted',CFG.muted);
+    try{ if(masterGain) masterGain.gain.setTargetAtTime(CFG.muted?0:CFG.master,ctx.currentTime,0.1); }catch(e){}
+    return CFG.muted; }
+
+  return { sfx, startMusic, stopMusic, setMaster, setMusic, setSfx, toggleMute, CFG };
+})();
+
+/* Confetti burst for winner screen */
+function launchConfetti(color){
+  const EMOJIS = ['⭐','✨','💫','🌟','🎉','🚀','🛸'];
+  for(let i=0;i<28;i++){
+    const el = document.createElement('div');
+    el.className = 'confetti-p';
+    el.textContent = EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+    const sx = 30 + Math.random()*40, sy = 30 + Math.random()*40;
+    const ex = (Math.random()-0.5)*600, ey = (Math.random()-0.5)*500;
+    const rot = (Math.random()-0.5)*720;
+    const dur = 1.1 + Math.random()*0.8;
+    el.style.cssText = `left:${sx}%;top:${sy}%;--cfx:${ex}px;--cfy:${ey}px;--cfr:${rot}deg;--cfd:${dur}s;animation-delay:${Math.random()*0.3}s`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), (dur+0.4)*1000);
+  }
+}
+
 /* =============== MÓDULO 23: SETUP DE JUGADORES (lobby) ================ */
 const SETUP = {
   gameMode: 'base',
@@ -8340,6 +8606,45 @@ function bindBoardEvents(){
   document.getElementById('btnPair').onclick = openPairModal;
   document.getElementById('btnFullscreen').onclick = toggleFullscreen;
   document.getElementById('btnProjector').onclick = toggleProjectorMode;
+
+  // Audio panel
+  (()=>{
+    const btn = document.getElementById('btnAudio');
+    const panel = document.getElementById('audioPanel');
+    if(!btn || !panel) return;
+
+    btn.onclick = (e)=>{
+      e.stopPropagation();
+      panel.classList.toggle('open');
+      if(panel.classList.contains('open')) AudioEngine.sfx.click();
+    };
+    document.addEventListener('click', (e)=>{
+      if(!panel.contains(e.target) && e.target !== btn) panel.classList.remove('open');
+    });
+
+    const sM = document.getElementById('sliderMaster');
+    const sMs = document.getElementById('sliderMusic');
+    const sS = document.getElementById('sliderSfx');
+    const vM = document.getElementById('valMaster');
+    const vMs = document.getElementById('valMusic');
+    const vS = document.getElementById('valSfx');
+    const muteBtn = document.getElementById('btnAudioMute');
+
+    // Init sliders from saved CFG
+    if(sM){ sM.value = AudioEngine.CFG.master; vM.textContent = Math.round(AudioEngine.CFG.master*100)+'%'; }
+    if(sMs){ sMs.value = AudioEngine.CFG.music; vMs.textContent = Math.round(AudioEngine.CFG.music*100)+'%'; }
+    if(sS){ sS.value = AudioEngine.CFG.sfx; vS.textContent = Math.round(AudioEngine.CFG.sfx*100)+'%'; }
+    if(muteBtn && AudioEngine.CFG.muted){ muteBtn.classList.add('muted'); muteBtn.textContent='Activar'; }
+
+    sM?.addEventListener('input', ()=>{ AudioEngine.setMaster(+sM.value); vM.textContent=Math.round(+sM.value*100)+'%'; });
+    sMs?.addEventListener('input', ()=>{ AudioEngine.setMusic(+sMs.value); vMs.textContent=Math.round(+sMs.value*100)+'%'; });
+    sS?.addEventListener('input', ()=>{ AudioEngine.setSfx(+sS.value); vS.textContent=Math.round(+sS.value*100)+'%'; });
+    muteBtn?.addEventListener('click', ()=>{
+      const muted = AudioEngine.toggleMute();
+      muteBtn.classList.toggle('muted', muted);
+      muteBtn.textContent = muted ? 'Activar' : 'Silenciar';
+    });
+  })();
 
   // Cost card collapsible toggle
   document.getElementById('costCardToggle').onclick = ()=>{
