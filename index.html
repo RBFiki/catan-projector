@@ -883,9 +883,60 @@ body.remote .toast-item{
 .confetti-p{position:fixed;pointer-events:none;z-index:9999;font-size:24px;
   animation:confettiFall var(--cfd,1.4s) ease-out forwards;}
 
-/* ========== ENHANCED DICE ========== */
-.die.rolling{animation:dieRoll .65s cubic-bezier(.4,1.6,.5,1)}
-.die.rolling-active{font-size:22px;color:rgba(26,20,10,0.6)}
+/* ========== DICE ROLL OVERLAY ========== */
+#diceRollOverlay{
+  position:fixed;inset:0;z-index:850;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(5,8,16,0.75);backdrop-filter:blur(7px);
+  animation:dOverIn .18s ease-out both;
+}
+#diceRollOverlay.out{animation:dOverOut .28s ease-in forwards}
+@keyframes dOverIn{from{opacity:0;backdrop-filter:blur(0)}to{opacity:1;backdrop-filter:blur(7px)}}
+@keyframes dOverOut{from{opacity:1}to{opacity:0}}
+.dice-roll-stage{display:flex;flex-direction:column;align-items:center;gap:20px}
+.dice-roll-who{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(217,180,106,0.5);
+  opacity:0;transition:opacity .3s}
+.dice-roll-who.show{opacity:1}
+.dice-roll-row{display:flex;align-items:center;gap:18px}
+.big-die{
+  width:92px;height:92px;border-radius:18px;
+  background:linear-gradient(150deg,#faf2e2 0%,#d8cb9e 100%);
+  box-shadow:0 14px 36px rgba(0,0,0,0.72),0 3px 6px rgba(0,0,0,0.35),
+             inset 0 1px 0 rgba(255,255,255,0.65),inset 0 -4px 0 rgba(0,0,0,0.22);
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:15px;gap:5px;
+}
+.big-die.tumble{animation:dieTumble .11s ease-in-out}
+.big-die.land{animation:dieLand .42s cubic-bezier(.25,2,.35,1) both}
+.big-die.seven-die{
+  background:linear-gradient(150deg,#ff7b6e,#c0392b)!important;
+  box-shadow:0 14px 36px rgba(192,57,43,0.65),0 0 50px rgba(255,107,94,0.35),
+             inset 0 1px 0 rgba(255,255,255,0.3),inset 0 -4px 0 rgba(0,0,0,0.25)!important;
+}
+.big-die.seven-die .dp{background:#fff!important}
+.dp{border-radius:50%;background:#2a1a08;width:100%;height:100%;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.45),inset 0 -1px 1px rgba(255,255,255,0.08)}
+.dp-h{visibility:hidden}
+.dice-roll-plus{font-size:28px;font-weight:300;color:rgba(217,180,106,0.45)}
+.dice-roll-sum{
+  font-family:'Cormorant Garamond',serif;font-weight:700;font-size:80px;line-height:1;
+  color:var(--gold);text-shadow:0 0 50px rgba(217,180,106,0.65);
+  opacity:0;transform:scale(0.4) translateY(10px);
+  transition:opacity .22s,transform .3s cubic-bezier(.25,2,.4,1);
+}
+.dice-roll-sum.show{opacity:1;transform:scale(1) translateY(0)}
+.dice-roll-sum.seven-sum{color:#ff6b5e;text-shadow:0 0 50px rgba(255,107,94,0.8)}
+@keyframes dieTumble{
+  0%{transform:rotate(-14deg) scale(1.06)}
+  50%{transform:rotate(10deg) scale(0.96)}
+  100%{transform:rotate(-14deg) scale(1.06)}
+}
+@keyframes dieLand{
+  0%{transform:scale(1.3) rotate(10deg)}
+  55%{transform:scale(0.86) rotate(-3deg)}
+  78%{transform:scale(1.07) rotate(1deg)}
+  100%{transform:scale(1) rotate(0)}
+}
 
 /* ========== BOT THINKING ========== */
 @keyframes thinkDot{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
@@ -2302,65 +2353,116 @@ function newBoard(opts={}){
   broadcastState();
 }
 
+/* ── Dice face dot layout (9-cell grid, 6 faces) ── */
+function setDiceFace(el, n){
+  const F={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+  const dots=F[n]||F[1];
+  el.innerHTML=Array.from({length:9},(_,i)=>`<span class="${dots.includes(i)?'dp':'dp-h'}"></span>`).join('');
+}
+
+/* ── Full-screen dice roll overlay ── */
+function showDiceOverlay(d1, d2, onDone){
+  document.getElementById('diceRollOverlay')?.remove();
+  const sum=d1+d2;
+  const pName=STATE.players?.[STATE.currentPlayerIdx]?.name||'';
+
+  const ov=document.createElement('div');
+  ov.id='diceRollOverlay';
+  ov.innerHTML=`
+    <div class="dice-roll-stage">
+      <div class="dice-roll-who" id="dRollWho">${pName} lanza los dados</div>
+      <div class="dice-roll-row">
+        <div class="big-die" id="bDie1"></div>
+        <div class="dice-roll-plus">+</div>
+        <div class="big-die" id="bDie2"></div>
+      </div>
+      <div class="dice-roll-sum" id="dRollSum"></div>
+    </div>`;
+  document.body.appendChild(ov);
+
+  const el1=document.getElementById('bDie1'), el2=document.getElementById('bDie2');
+  const sumEl=document.getElementById('dRollSum'), whoEl=document.getElementById('dRollWho');
+  setDiceFace(el1,1+Math.floor(Math.random()*6));
+  setDiceFace(el2,1+Math.floor(Math.random()*6));
+  setTimeout(()=>whoEl.classList.add('show'),60);
+
+  function animDie(el,finalVal,startDelay){
+    return new Promise(resolve=>{
+      let iv=52, elapsed=0;
+      const TOTAL=820;
+      setTimeout(()=>{
+        function tick(){
+          el.classList.remove('tumble'); void el.offsetWidth; el.classList.add('tumble');
+          setDiceFace(el, 1+Math.floor(Math.random()*6));
+          elapsed+=iv; iv=Math.min(iv*1.14, 180);
+          if(elapsed>=TOTAL){
+            el.classList.remove('tumble');
+            setDiceFace(el, finalVal);
+            void el.offsetWidth; el.classList.add('land');
+            resolve();
+          } else { setTimeout(tick,iv); }
+        }
+        tick();
+      }, startDelay);
+    });
+  }
+
+  Promise.all([animDie(el1,d1,0), animDie(el2,d2,75)]).then(()=>{
+    if(sum===7){ el1.classList.add('seven-die'); el2.classList.add('seven-die'); }
+    sumEl.textContent = sum===7 ? '⚠ 7' : sum;
+    if(sum===7) sumEl.classList.add('seven-sum');
+    setTimeout(()=>sumEl.classList.add('show'),30);
+    // Hold result briefly, then fade out overlay and run game logic
+    setTimeout(()=>{
+      ov.classList.add('out');
+      setTimeout(()=>{ ov.remove(); onDone(); }, 280);
+    }, 520);
+  });
+}
+
 function rollDice(){
   if(STATE.phase !== 'rolling' && STATE.phase !== 'main') return toast('No es momento de tirar', true);
   if(STATE.phase === 'main' && STATE.lastRoll) return toast('Ya tiraste este turno', true);
 
-  const d1 = 1+Math.floor(Math.random()*6);
-  const d2 = 1+Math.floor(Math.random()*6);
-  const sum = d1+d2;
-  STATE.lastRoll = {d1,d2,sum,t:now()};
+  const d1=1+Math.floor(Math.random()*6);
+  const d2=1+Math.floor(Math.random()*6);
+  const sum=d1+d2;
+  STATE.lastRoll={d1,d2,sum,t:now()};
   STATE.rolls.unshift({d1,d2,sum,t:now()});
   if(STATE.rolls.length>50) STATE.rolls.pop();
 
-  // SFX
   AudioEngine.sfx.dice();
+  // Update sidebar dice preview
+  const s1=document.getElementById('die1'),s2=document.getElementById('die2');
+  if(s1) s1.textContent=d1; if(s2) s2.textContent=d2;
 
-  // Animar dados con números parpadeantes
-  ['die1','die2'].forEach((id,i)=>{
-    const e = document.getElementById(id);
-    if(!e) return;
-    e.classList.remove('rolling');
-    void e.offsetWidth;
-    e.classList.add('rolling','rolling-active');
-    const flick = setInterval(()=>{ e.textContent = 1+Math.floor(Math.random()*6); }, 55);
-    setTimeout(()=>{
-      clearInterval(flick);
-      e.classList.remove('rolling-active');
-      e.textContent = i===0?d1:d2;
-    }, 540);
-  });
-
-  // Flash sobre el tablero
-  showDiceFlash(sum);
-
-  setTimeout(()=>{
+  showDiceOverlay(d1, d2, ()=>{
+    showDiceFlash(sum);
     if(sum===7){
       AudioEngine.sfx.robber();
       logEvent(`🎲 ${d1}+${d2}=${sum} · 👾 ¡Space Pirate!`, '#c0392b');
-      // Construir cola de descarte — los jugadores eligen manualmente
-      STATE.discardQueue = {};
+      STATE.discardQueue={};
       STATE.players.forEach(p=>{
-        const total = Object.values(p.resources).reduce((a,b)=>a+b,0);
+        const total=Object.values(p.resources).reduce((a,b)=>a+b,0);
         if(total>7){
-          STATE.discardQueue[p.id] = Math.floor(total/2);
+          STATE.discardQueue[p.id]=Math.floor(total/2);
           logEvent(`${p.name} debe descartar ${Math.floor(total/2)} cartas`, p.color);
         }
       });
-      if(Object.keys(STATE.discardQueue).length > 0){
-        STATE.phase = 'discard';
+      if(Object.keys(STATE.discardQueue).length>0){
+        STATE.phase='discard';
       } else {
-        STATE.phase = 'robber';
-        STATE.pendingAction = {type:'move-robber', playerId:STATE.players[STATE.currentPlayerIdx].id};
+        STATE.phase='robber';
+        STATE.pendingAction={type:'move-robber', playerId:STATE.players[STATE.currentPlayerIdx].id};
       }
     } else {
       logEvent(`🎲 ${d1}+${d2}=${sum}`, '#d9b46a');
       distributeResources(sum);
-      STATE.phase = 'main';
+      STATE.phase='main';
     }
     renderAll();
     broadcastState();
-  }, 600);
+  });
 }
 
 function autoDiscard(player, n){
