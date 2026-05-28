@@ -3241,10 +3241,11 @@ function renderBoard(){
       <stop offset="65%"  stop-color="rgba(0,0,0,0)"/>
       <stop offset="100%" stop-color="rgba(0,0,0,0.08)"/>
     </radialGradient>
-    <linearGradient id="hexToplight" x1="0.3" y1="0" x2="0.7" y2="1" gradientUnits="objectBoundingBox">
-      <stop offset="0%"   stop-color="rgba(255,255,255,0.22)"/>
-      <stop offset="30%"  stop-color="rgba(255,255,255,0.04)"/>
-      <stop offset="100%" stop-color="rgba(0,0,0,0.22)"/>
+    <linearGradient id="hexToplight" x1="0.28" y1="0" x2="0.72" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="rgba(255,255,255,0.32)"/>
+      <stop offset="18%"  stop-color="rgba(255,255,255,0.10)"/>
+      <stop offset="52%"  stop-color="rgba(255,255,255,0.02)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.30)"/>
     </linearGradient>
     <filter id="tokenShadow" x="-30%" y="-30%" width="160%" height="160%">
       <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.5)"/>
@@ -3252,12 +3253,53 @@ function renderBoard(){
     <filter id="tokenHot" x="-40%" y="-40%" width="180%" height="180%">
       <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="rgba(220,60,20,0.55)"/>
     </filter>
-    <pattern id="texForest"  x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="${getCSSVar('--t-forest')}"/></pattern>
-    <pattern id="texPasture" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse"><rect width="50" height="50" fill="${getCSSVar('--t-pasture')}"/></pattern>
-    <pattern id="texField"   x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="${getCSSVar('--t-field')}"/></pattern>
-    <pattern id="texMountain" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="${getCSSVar('--t-mountain')}"/></pattern>
-    <pattern id="texHill"    x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse"><rect width="50" height="50" fill="${getCSSVar('--t-hill')}"/></pattern>
-    <pattern id="texDesert"  x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="${getCSSVar('--t-desert')}"/></pattern>
+    <!-- Soft blurred outer glow for hex rings -->
+    <filter id="hexGlowFx" x="-28%" y="-28%" width="156%" height="156%">
+      <feGaussianBlur stdDeviation="5.5"/>
+    </filter>
+    <!-- Terrain fills — radial gradient per terrain, objectBoundingBox so each hex is self-contained -->
+    <!-- Titanio: steel-blue radial, bright core tapering to near-black -->
+    <radialGradient id="texForest" cx="0.5" cy="0.32" r="0.66" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#5298C4"/>
+      <stop offset="22%"  stop-color="#234868"/>
+      <stop offset="55%"  stop-color="#0E2030"/>
+      <stop offset="100%" stop-color="#040810"/>
+    </radialGradient>
+    <!-- Biotech: vivid bio-green radial -->
+    <radialGradient id="texPasture" cx="0.5" cy="0.32" r="0.66" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#228850"/>
+      <stop offset="22%"  stop-color="#0E4424"/>
+      <stop offset="55%"  stop-color="#061C10"/>
+      <stop offset="100%" stop-color="#020608"/>
+    </radialGradient>
+    <!-- Energía: vivid amber radial -->
+    <radialGradient id="texField" cx="0.5" cy="0.32" r="0.66" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#806000"/>
+      <stop offset="22%"  stop-color="#3C2E00"/>
+      <stop offset="55%"  stop-color="#181200"/>
+      <stop offset="100%" stop-color="#060400"/>
+    </radialGradient>
+    <!-- Cristales: vivid indigo-violet radial -->
+    <radialGradient id="texMountain" cx="0.5" cy="0.32" r="0.66" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#4A1E8C"/>
+      <stop offset="22%"  stop-color="#220E4C"/>
+      <stop offset="55%"  stop-color="#0C0622"/>
+      <stop offset="100%" stop-color="#04020C"/>
+    </radialGradient>
+    <!-- Nanomateriales: vivid rust-orange radial -->
+    <radialGradient id="texHill" cx="0.5" cy="0.32" r="0.66" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#8A2010"/>
+      <stop offset="22%"  stop-color="#421208"/>
+      <stop offset="55%"  stop-color="#1C0804"/>
+      <stop offset="100%" stop-color="#080302"/>
+    </radialGradient>
+    <!-- Zona Muerta: dim eerie-purple radial, brighter core to look "active" -->
+    <radialGradient id="texDesert" cx="0.5" cy="0.32" r="0.66" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#2E224E"/>
+      <stop offset="22%"  stop-color="#161028"/>
+      <stop offset="55%"  stop-color="#0A0812"/>
+      <stop offset="100%" stop-color="#030208"/>
+    </radialGradient>
   `;
   boardSVG.appendChild(defs);
 
@@ -3302,24 +3344,42 @@ function renderBoard(){
     g.setAttribute('class','hex hex-'+h.terrain);
     g.dataset.q = h.q; g.dataset.r = h.r;
 
-    // Glow ring: hex ligeramente mayor con stroke coloreado semitransparente
-    const glowRing = document.createElementNS('http://www.w3.org/2000/svg','path');
-    glowRing.setAttribute('d', hexPath(p.x, p.y, STATE.size*1.0));
-    glowRing.setAttribute('fill', 'none');
-    glowRing.setAttribute('stroke', terrainBorderColor(h.terrain));
-    glowRing.setAttribute('stroke-width', '6');
-    glowRing.setAttribute('opacity', '0.35');
-    glowRing.setAttribute('pointer-events','none');
-    g.appendChild(glowRing);
+    // ── Glow aura (blurred outer ring) ──────────────────────────────
+    const glowAura = document.createElementNS('http://www.w3.org/2000/svg','path');
+    glowAura.setAttribute('d', hexPath(p.x, p.y, STATE.size*1.04));
+    glowAura.setAttribute('fill', 'none');
+    glowAura.setAttribute('stroke', terrainBorderColor(h.terrain));
+    glowAura.setAttribute('stroke-width', '11');
+    glowAura.setAttribute('opacity', '0.52');
+    glowAura.setAttribute('filter', 'url(#hexGlowFx)');
+    glowAura.setAttribute('pointer-events','none');
+    g.appendChild(glowAura);
 
-    // Relleno sólido + borde coloreado nítido
+    // ── Main fill with radial gradient ───────────────────────────────
     const path = document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d', hexPath(p.x, p.y, STATE.size*0.985));
     path.setAttribute('fill', `url(#tex${cap(h.terrain)})`);
     path.setAttribute('stroke', terrainBorderColor(h.terrain));
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('stroke-opacity', '0.75');
+    path.setAttribute('stroke-width', '1.8');
+    path.setAttribute('stroke-opacity', '0.82');
     g.appendChild(path);
+
+    // ── Bevel / toplight overlay (linear gradient, top-bright) ───────
+    const toplight = document.createElementNS('http://www.w3.org/2000/svg','path');
+    toplight.setAttribute('d', hexPath(p.x, p.y, STATE.size*0.985));
+    toplight.setAttribute('fill', 'url(#hexToplight)');
+    toplight.setAttribute('pointer-events','none');
+    toplight.setAttribute('opacity','0.55');
+    g.appendChild(toplight);
+
+    // ── Inner glass edge (white shimmer on inside of border) ─────────
+    const innerEdge = document.createElementNS('http://www.w3.org/2000/svg','path');
+    innerEdge.setAttribute('d', hexPath(p.x, p.y, STATE.size*0.96));
+    innerEdge.setAttribute('fill', 'none');
+    innerEdge.setAttribute('stroke', 'rgba(255,255,255,0.065)');
+    innerEdge.setAttribute('stroke-width', '1.5');
+    innerEdge.setAttribute('pointer-events','none');
+    g.appendChild(innerEdge);
 
     // Ícono en la mitad superior del hex (desplazado -28px arriba)
     const iconG = document.createElementNS('http://www.w3.org/2000/svg','g');
