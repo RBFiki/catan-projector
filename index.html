@@ -938,6 +938,50 @@ body.remote .toast-item{
   100%{transform:scale(1) rotate(0)}
 }
 
+/* ========== STAR FIELD ========== */
+.star-particle{position:absolute;border-radius:50%;background:#fff;pointer-events:none;z-index:0;
+  animation:starTwinkle ease-in-out infinite alternate}
+@keyframes starTwinkle{0%{opacity:.85;transform:scale(1)}100%{opacity:.08;transform:scale(.4)}}
+.nebula-glow{position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 55% 35% at 25% 40%,rgba(88,50,180,.055),transparent),
+             radial-gradient(ellipse 45% 28% at 75% 65%,rgba(40,100,200,.045),transparent),
+             radial-gradient(ellipse 30% 22% at 55% 20%,rgba(180,60,130,.035),transparent);
+  animation:nebulaBreath 18s ease-in-out infinite alternate}
+@keyframes nebulaBreath{0%{opacity:.6;transform:scale(1)}100%{opacity:1;transform:scale(1.04)}}
+
+/* ========== BUILD PARTICLES ========== */
+.build-particle{position:fixed;border-radius:50%;pointer-events:none;z-index:910;
+  animation:bpBurst ease-out forwards}
+@keyframes bpBurst{
+  0%  {transform:translate(-50%,-50%) scale(1);opacity:1}
+  100%{transform:translate(calc(-50% + var(--bx)),calc(-50% + var(--by))) scale(.1);opacity:0}
+}
+
+/* ========== WINNER MODAL EPIC ========== */
+#winnerModal .modal-card{max-width:460px!important;padding:0!important;overflow:hidden;border-radius:16px}
+.winner-hero{padding:32px 28px 20px;text-align:center;position:relative;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(217,180,106,.12),transparent 70%)}
+.winner-crown{font-size:44px;line-height:1;margin-bottom:10px}
+.winner-avatar-wrap{display:flex;justify-content:center;margin-bottom:12px}
+.winner-hero h1{font-size:34px;margin:0 0 8px;line-height:1}
+.winner-podium{padding:0 20px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
+.podium-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;margin-bottom:4px;
+  font-size:13px}
+.podium-row.first{background:rgba(217,180,106,.1);border:1px solid rgba(217,180,106,.2)}
+.podium-row:not(.first){background:rgba(255,255,255,.03)}
+.podium-rank{font-size:18px;width:26px;flex-shrink:0}
+.podium-name{flex:1;font-weight:600}
+.podium-vp{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim)}
+.winner-bottom{padding:20px 24px 24px}
+.winner-stats{margin:0 0 12px;border-radius:10px}
+.btn-rematch{background:linear-gradient(135deg,rgba(217,180,106,.18),rgba(217,180,106,.06));
+  border:1px solid rgba(217,180,106,.45);color:var(--gold);font-size:16px;font-weight:600;
+  padding:15px;border-radius:10px;width:100%;cursor:pointer;letter-spacing:.5px;margin-bottom:8px;
+  transition:background .2s}
+.btn-rematch:hover{background:linear-gradient(135deg,rgba(217,180,106,.28),rgba(217,180,106,.12))}
+.winner-footer-btns{display:flex;gap:8px}
+.winner-footer-btns .btn{flex:1;font-size:12px}
+
 /* ========== BOT THINKING ========== */
 @keyframes thinkDot{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
 .thinking-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--gold);margin:0 1.5px;animation:thinkDot 1s ease-in-out infinite}
@@ -1077,14 +1121,26 @@ body.remote .toast-item{
      MODAL GANADOR
 ============================================================ -->
 <div id="winnerModal" class="modal hidden" style="z-index:800">
-  <div class="modal-card" style="max-width:380px">
-    <div style="font-size:56px;line-height:1;margin-bottom:8px">🏆</div>
-    <h1 id="winnerName" style="margin:0 0 6px;font-size:30px;line-height:1.1">—</h1>
-    <div class="tag" id="winnerTag" style="margin-bottom:0">Ganador</div>
-    <div class="winner-stats" id="winnerStats" style="margin-top:20px"></div>
-    <div id="winnerTime" style="font-size:12px;color:var(--ink-dim);margin:8px 0 20px;letter-spacing:0.5px"></div>
-    <button class="btn primary btn-block" id="btnWinnerNewGame" style="font-size:15px;padding:16px">🚀 Nueva Partida</button>
-    <button class="btn btn-block" id="btnWinnerBoard" style="margin-top:8px;font-size:13px">Seguir viendo el tablero</button>
+  <div class="modal-card">
+    <!-- Hero section -->
+    <div class="winner-hero">
+      <div class="winner-crown">🏆</div>
+      <div class="winner-avatar-wrap" id="winnerAvatarWrap"></div>
+      <h1 id="winnerName" style="margin:0 0 6px">—</h1>
+      <div class="tag" id="winnerTag">Ganador</div>
+    </div>
+    <!-- Ranking podium -->
+    <div class="winner-podium" id="winnerPodium"></div>
+    <!-- Stats + actions -->
+    <div class="winner-bottom">
+      <div class="winner-stats" id="winnerStats"></div>
+      <div id="winnerTime" style="font-size:11px;color:var(--ink-dim);margin-bottom:16px;letter-spacing:.5px;text-align:center"></div>
+      <button class="btn-rematch" id="btnWinnerRematch">🔄 Revancha — mismos jugadores</button>
+      <div class="winner-footer-btns">
+        <button class="btn btn-block" id="btnWinnerNewGame">🚀 Nueva Partida</button>
+        <button class="btn btn-block" id="btnWinnerBoard">Ver tablero</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2332,6 +2388,7 @@ function startGame(opts){
   STATE.gameDuration = null;
   AudioEngine.startMusic();
   BoardView.reset();
+  initStarField();
   startGameTimer();
   logEvent('🚀 ¡Partida iniciada! · Fase de colonización espacial', '#d9b46a');
   renderAll();
@@ -2707,6 +2764,65 @@ function playDevCard(playerId, cardType, opts={}){
   broadcastState();
 }
 
+/* ── Animated star field for the game stage ── */
+function initStarField(){
+  const stage = document.getElementById('stage');
+  if(!stage || stage._starsOk) return;
+  stage._starsOk = true;
+  // Nebula layer
+  const neb = document.createElement('div');
+  neb.className = 'nebula-glow'; stage.prepend(neb);
+  // Stars
+  const frag = document.createDocumentFragment();
+  for(let i=0;i<75;i++){
+    const s = document.createElement('span');
+    s.className = 'star-particle';
+    const sz = .4 + Math.random()*1.4;
+    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;`
+      + `width:${sz}px;height:${sz}px;`
+      + `animation-duration:${1.8+Math.random()*3.5}s;`
+      + `animation-delay:-${Math.random()*4}s;`;
+    frag.appendChild(s);
+  }
+  stage.prepend(frag);
+}
+
+/* ── Convert SVG gBoard coordinates → screen px ── */
+function boardSVGToScreen(svgX, svgY){
+  const svg = document.getElementById('board');
+  const g   = document.getElementById('gBoard');
+  if(!svg || !g) return {x: window.innerWidth/2, y: window.innerHeight/2};
+  try{
+    const pt = svg.createSVGPoint();
+    pt.x = svgX; pt.y = svgY;
+    const sp = pt.matrixTransform(g.getCTM());
+    return {x: sp.x, y: sp.y};
+  }catch(e){ return {x: window.innerWidth/2, y: window.innerHeight/2}; }
+}
+
+/* ── Particle burst at a screen position ── */
+function buildParticles(sx, sy, color, count, type){
+  count = count || 12;
+  const isBig = type === 'city';
+  for(let i=0;i<count;i++){
+    const p = document.createElement('div');
+    p.className = 'build-particle';
+    const angle = (i/count)*Math.PI*2 + (Math.random()-.5)*.6;
+    const dist  = isBig ? 52+Math.random()*44 : type==='road' ? 22+Math.random()*22 : 32+Math.random()*32;
+    const size  = isBig ? 4+Math.random()*4 : 2+Math.random()*3;
+    const dur   = (.45+Math.random()*.35).toFixed(2);
+    const bx = (Math.cos(angle)*dist).toFixed(1);
+    const by = (Math.sin(angle)*dist + dist*.25).toFixed(1); // slight gravity bias
+    p.style.cssText = `left:${sx}px;top:${sy}px;`
+      + `width:${size}px;height:${size}px;`
+      + `background:${color};box-shadow:0 0 ${size*2}px ${color}99;`
+      + `--bx:${bx}px;--by:${by}px;`
+      + `animation-duration:${dur}s;`;
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(), (+dur+.1)*1000);
+  }
+}
+
 function placeSettlement(vertexId, playerId){
   const me = STATE.players.find(p=>p.id===playerId);
   const isStarting = STATE.phase === 'starting';
@@ -2718,6 +2834,8 @@ function placeSettlement(vertexId, playerId){
   }
   AudioEngine.sfx.settle();
   if(me.isBot) flashBotAction(me, 'construye Base Lunar 🛸');
+  const _sv = STATE.vertices?.get(vertexId);
+  if(_sv){ const _ss=boardSVGToScreen(_sv.x,_sv.y); buildParticles(_ss.x,_ss.y,PLAYER_COLORS[me.color]?.hex||'#d9b46a',14,'settle'); }
   me.settlements.push({vertex:vertexId});
   me.vp++;
   logEvent(`${me.name} construye Base Lunar 🛸`, me.color);
@@ -2746,6 +2864,8 @@ function placeRoad(edgeId, playerId){
   }
   AudioEngine.sfx.road();
   if(me.isBot) flashBotAction(me, 'traza Corredor Estelar 🚀');
+  const _re = STATE.edges?.get(edgeId);
+  if(_re){ const _rs=boardSVGToScreen(_re.mx,_re.my); buildParticles(_rs.x,_rs.y,PLAYER_COLORS[me.color]?.hex||'#d9b46a',8,'road'); }
   me.roads.push({edge:edgeId});
 
   // Recalcular ruta más larga
@@ -2776,6 +2896,8 @@ function placeCity(vertexId, playerId){
   }
   AudioEngine.sfx.city();
   if(me.isBot) flashBotAction(me, 'construye Metrópolis 🌌');
+  const _cv = STATE.vertices?.get(vertexId);
+  if(_cv){ const _cs=boardSVGToScreen(_cv.x,_cv.y); buildParticles(_cs.x,_cs.y,PLAYER_COLORS[me.color]?.hex||'#d9b46a',20,'city'); }
   payCost(me, COSTS.city);
   me.settlements = me.settlements.filter(s=>s.vertex!==vertexId);
   me.cities.push({vertex:vertexId});
@@ -2937,41 +3059,63 @@ function showWinnerPopup(winner, totalVP){
   if(!modal) return;
   const hex = (PLAYER_COLORS[winner.color]||{}).hex || '#d9b46a';
 
+  // Hero
   document.getElementById('winnerName').textContent = winner.name;
   document.getElementById('winnerName').style.color = hex;
-
+  document.getElementById('winnerAvatarWrap').innerHTML = astronautSVG(hex, 72);
   const tag = document.getElementById('winnerTag');
-  tag.textContent = `${totalVP} Puntos de Victoria · ¡GANADOR!`;
+  tag.textContent = `${totalVP} Puntos de Victoria · ¡CAMPEÓN GALÁCTICO!`;
   tag.style.cssText += `;background:${hex}22;color:${hex};border-color:${hex}55`;
 
-  const stats = document.getElementById('winnerStats');
-  const items = [
-    { n: winner.settlements?.length||0, l:'Bases 🛸' },
-    { n: winner.cities?.length||0,      l:'Metrópolis 🌌' },
-    { n: winner.knightsPlayed||0,        l:'Guardianes 🛡' },
-    { n: winner.longestRoad||0,          l:'Corredores 🚀' },
-  ];
-  stats.innerHTML = items.map(s=>`
-    <div class="winner-stat">
-      <div class="winner-stat-n" style="color:${hex}">${s.n}</div>
-      <div class="winner-stat-l">${s.l}</div>
-    </div>`).join('');
+  // Podium — rank all players by VP
+  const MEDALS = ['🥇','🥈','🥉','4️⃣'];
+  const ranked = [...STATE.players].sort((a,b)=>{
+    const va = a.vp + (a._lrBonus||0) + (a._laBonus||0);
+    const vb = b.vp + (b._lrBonus||0) + (b._laBonus||0);
+    return vb - va;
+  });
+  document.getElementById('winnerPodium').innerHTML = ranked.map((p,i)=>{
+    const ph = PLAYER_COLORS[p.color]?.hex||'#888';
+    const vp = p.vp + (p._lrBonus||0) + (p._laBonus||0);
+    return `<div class="podium-row${i===0?' first':''}">
+      <span class="podium-rank">${MEDALS[i]||'·'}</span>
+      <span style="flex-shrink:0">${astronautSVG(ph,22)}</span>
+      <span class="podium-name" style="color:${ph}">${p.name}</span>
+      <span class="podium-vp">${vp} VP</span>
+    </div>`;
+  }).join('');
 
+  // Stats
+  const stats = document.getElementById('winnerStats');
+  stats.innerHTML = [
+    {n:winner.settlements?.length||0, l:'Bases 🛸'},
+    {n:winner.cities?.length||0,      l:'Metrópolis 🌌'},
+    {n:winner.knightsPlayed||0,       l:'Guardianes ⚔'},
+    {n:winner.longestRoad||0,         l:'Corredores 🚀'},
+  ].map(s=>`<div class="winner-stat">
+    <div class="winner-stat-n" style="color:${hex}">${s.n}</div>
+    <div class="winner-stat-l">${s.l}</div>
+  </div>`).join('');
+
+  // Duration
   const dur = STATE.gameDuration || (STATE.gameStartTime ? Math.floor((Date.now()-STATE.gameStartTime)/1000) : 0);
-  const timeEl = document.getElementById('winnerTime');
-  timeEl.textContent = dur > 0 ? `⏱ Duración de la partida: ${formatDuration(dur)}` : '';
+  document.getElementById('winnerTime').textContent = dur>0 ? `⏱ ${formatDuration(dur)} de conquista espacial` : '';
 
   modal.classList.remove('hidden');
   AudioEngine.sfx.win();
-  setTimeout(()=>launchConfetti(hex), 300);
+  setTimeout(()=>launchConfetti(hex), 200);
+  setTimeout(()=>launchConfetti(hex), 800);
 
-  document.getElementById('btnWinnerNewGame').onclick = ()=>{
+  // Rematch — same players, new board
+  document.getElementById('btnWinnerRematch').onclick = ()=>{
     modal.classList.add('hidden');
-    _doGoHome();
+    startGame({
+      gameMode: STATE.gameMode, gameType: STATE.gameType, targetVP: STATE.targetVP,
+      players: STATE.players.map(p=>({color:p.color,name:p.name,isBot:p.isBot,botDifficulty:p.botDifficulty}))
+    });
   };
-  document.getElementById('btnWinnerBoard').onclick = ()=>{
-    modal.classList.add('hidden');
-  };
+  document.getElementById('btnWinnerNewGame').onclick = ()=>{ modal.classList.add('hidden'); _doGoHome(); };
+  document.getElementById('btnWinnerBoard').onclick  = ()=>{ modal.classList.add('hidden'); };
 }
 
 function checkVictory(){
