@@ -4100,95 +4100,129 @@ function onHexClick(hex){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ICONOS DE TERRENO — un único icono centrado en 60×60
-   Estilo: minimalista bold — una forma grande y limpia por hex.
-   Centro: (30,30). Llamados desde getTerrainIcon().
+   ICONOS DE TERRENO — diseño top, un icono centrado en 60×60.
+   Centro: (30,30). Stroke-based con capas de luz/sombra.
 ═══════════════════════════════════════════════════════════════════ */
 
-/* ─── TITANIO ⚙️: engranaje sólido (polígono 12 puntos) ─────────── */
+/* ─── TITANIO ⚙️: engranaje de anillo con 6 dientes y rayos ──────── */
 function treeIcons(){return `
-  <!-- Gear: alternating outer(r=24) / inner(r=16) points at 30° steps -->
-  <path d="M30,6 L38,15.5 L50,18 L46,30 L50,42 L38,44.5 L30,54 L22,44.5 L10,42 L14,30 L10,18 L22,15.5 Z"
-    fill="#5AADFF" opacity="0.92"/>
-  <!-- Center hole (dark circle over solid gear) -->
-  <circle cx="30" cy="30" r="10" fill="#07182A"/>
-  <!-- Center bolt -->
-  <circle cx="30" cy="30" r="4.5" fill="#5AADFF"/>
+  <!-- Dientes: anillo grueso con patrón de guiones square-cap = dientes -->
+  <circle cx="30" cy="30" r="22" fill="none" stroke="#5AADFF" stroke-width="9"
+    stroke-dasharray="8.5 14.5" stroke-linecap="square" stroke-dashoffset="-99"/>
+  <!-- 3 rayos (hub → ring inner edge, 60° 180° 300°) -->
+  <line x1="33" y1="35" x2="39" y2="46" stroke="#5AADFF" stroke-width="2.8"/>
+  <line x1="24" y1="30" x2="12" y2="30" stroke="#5AADFF" stroke-width="2.8"/>
+  <line x1="33" y1="25" x2="39" y2="14" stroke="#5AADFF" stroke-width="2.8"/>
+  <!-- Hub central -->
+  <circle cx="30" cy="30" r="6.5" fill="#5AADFF"/>
+  <circle cx="30" cy="30" r="2.8" fill="rgba(4,14,40,0.92)"/>
+  <!-- Arco de luz: tapa izquierdo del anillo -->
+  <circle cx="30" cy="30" r="22" fill="none"
+    stroke="rgba(195,238,255,0.45)" stroke-width="2.2"
+    stroke-dasharray="38 100" stroke-dashoffset="-80"/>
 `}
 
-/* ─── BIOTECH 🧬: doble hélice bold ───────────────────────────────── */
+/* ─── BIOTECH 🧬: doble hélice con profundidad ─────────────────────── */
 function grassIcons(){return `
-  <!-- Strand 1: sweeps left→right→left (bold S-curve) -->
-  <path d="M16,4 C44,7 44,24 16,28 C44,32 44,49 16,53"
-    fill="none" stroke="#22E878" stroke-width="5" stroke-linecap="round"/>
-  <!-- Strand 2: mirror (sweeps right→left→right) -->
-  <path d="M44,4 C16,7 16,24 44,28 C16,32 16,49 44,53"
-    fill="none" stroke="#22E878" stroke-width="5" stroke-linecap="round" opacity="0.5"/>
-  <!-- Crossbars at strand endpoints -->
-  <line x1="16" y1="4"  x2="44" y2="4"  stroke="#22E878" stroke-width="3.5" stroke-linecap="round"/>
-  <line x1="16" y1="28" x2="44" y2="28" stroke="#22E878" stroke-width="3.5" stroke-linecap="round"/>
-  <line x1="16" y1="53" x2="44" y2="53" stroke="#22E878" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Hebra posterior (más delgada, semitransparente = profundidad) -->
+  <path d="M45,3 C14,8 14,25 45,28 C14,31 14,48 45,53"
+    fill="none" stroke="#22E878" stroke-width="4.5" stroke-linecap="round" opacity="0.38"/>
+  <!-- Hebra delantera (gruesa, plena) -->
+  <path d="M15,3 C46,8 46,25 15,28 C46,31 46,48 15,53"
+    fill="none" stroke="#22E878" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- Escalones/rungs (pares de bases) -->
+  <line x1="15" y1="3"  x2="45" y2="3"  stroke="#22E878" stroke-width="4" stroke-linecap="round"/>
+  <line x1="15" y1="28" x2="45" y2="28" stroke="#22E878" stroke-width="4" stroke-linecap="round"/>
+  <line x1="15" y1="53" x2="45" y2="53" stroke="#22E878" stroke-width="4" stroke-linecap="round"/>
+  <!-- Nudos en los extremos de las hebras -->
+  <circle cx="15" cy="3"  r="3.5" fill="#22E878"/>
+  <circle cx="45" cy="3"  r="3.5" fill="#22E878"/>
+  <circle cx="45" cy="28" r="3.5" fill="#22E878"/>
+  <circle cx="15" cy="28" r="3.5" fill="#22E878"/>
+  <circle cx="15" cy="53" r="3.5" fill="#22E878"/>
+  <circle cx="45" cy="53" r="3.5" fill="#22E878"/>
 `}
 
-/* ─── ENERGÍA ⚡: rayo bold ────────────────────────────────────────── */
+/* ─── ENERGÍA ⚡: rayo sólido con núcleo brillante ─────────────────── */
 function wheatIcons(){return `
-  <!-- Big filled lightning bolt -->
-  <path d="M38,3 L22,28 L33,28 L19,57 L46,22 L34,22 Z"
-    fill="#FFD000" stroke="#FFE840" stroke-width="1.8" stroke-linejoin="round"/>
-  <!-- Inner bright highlight -->
-  <path d="M38,3 L22,28 L33,28 L19,57 L46,22 L34,22 Z"
-    fill="rgba(255,255,220,0.18)"/>
+  <!-- Sombra desplazada (profundidad) -->
+  <path d="M40,4 L23,30 L35,30 L20,58 L49,23 L36,23 Z"
+    fill="rgba(180,110,0,0.35)" transform="translate(2,2)"/>
+  <!-- Rayo principal -->
+  <path d="M38,2 L21,28 L33,28 L18,57 L47,21 L34,21 Z"
+    fill="#FFD000" stroke="#FFE855" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Cara iluminada (borde superior derecho del rayo) -->
+  <path d="M38,2 L21,28 L33,28" fill="none"
+    stroke="rgba(255,255,200,0.55)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Chispa en la punta superior -->
+  <circle cx="38" cy="2" r="3.5" fill="rgba(255,255,210,0.85)"/>
 `}
 
-/* ─── CRISTALES 💎: diamante bold con facetas ─────────────────────── */
+/* ─── CRISTALES 💎: gema con reflejos internos ─────────────────────── */
 function mountainIcons(){return `
-  <!-- Diamond outline -->
-  <path d="M30,4 L55,28 L30,56 L5,28 Z"
+  <!-- Sombra desplazada -->
+  <path d="M30,5 L55,29 L30,57 L5,29 Z"
+    fill="rgba(80,0,180,0.3)" transform="translate(2,3)"/>
+  <!-- Diamante principal -->
+  <path d="M30,3 L56,27 L30,55 L4,27 Z"
     fill="none" stroke="#B070FF" stroke-width="4.5" stroke-linejoin="round"/>
-  <!-- Horizontal waistline -->
-  <line x1="5" y1="28" x2="55" y2="28" stroke="#B070FF" stroke-width="2.5" opacity="0.7"/>
-  <!-- Top facet lines from apex -->
-  <line x1="30" y1="4"  x2="5"  y2="28" stroke="#B070FF" stroke-width="2" opacity="0.45"/>
-  <line x1="30" y1="4"  x2="55" y2="28" stroke="#B070FF" stroke-width="2" opacity="0.45"/>
-  <!-- Bright top facet fill -->
-  <polygon points="30,4 55,28 30,22" fill="#C898FF" opacity="0.25"/>
-  <!-- Top sparkle -->
-  <circle cx="30" cy="4" r="4" fill="#EED8FF"/>
+  <!-- Línea ecuatorial (girdle) -->
+  <line x1="4" y1="27" x2="56" y2="27" stroke="#B070FF" stroke-width="2.5" opacity="0.6"/>
+  <!-- Faceta crown derecha (cara más brillante) -->
+  <polygon points="30,3 56,27 30,20" fill="#C898FF" opacity="0.32"/>
+  <!-- Faceta crown izquierda -->
+  <polygon points="30,3 4,27 30,20" fill="#9850E8" opacity="0.18"/>
+  <!-- Línea de vértice bajando -->
+  <line x1="30" y1="3" x2="30" y2="55" stroke="rgba(200,160,255,0.25)" stroke-width="1.2"/>
+  <!-- Destello en la punta -->
+  <circle cx="30" cy="3" r="4.5" fill="rgba(238,212,255,0.95)"/>
+  <!-- Segundo destello mini -->
+  <circle cx="48" cy="22" r="2" fill="rgba(220,190,255,0.5)"/>
 `}
 
-/* ─── NANOMATERIALES ⚛️: átomo — 3 órbitas bold ───────────────────── */
+/* ─── NANOMATERIALES ⚛️: átomo con órbitas y núcleo caliente ──────── */
 function hillIcons(){return `
-  <!-- Orbit 1: horizontal ellipse -->
+  <!-- Halo exterior del núcleo -->
+  <circle cx="30" cy="30" r="10" fill="rgba(255,88,32,0.22)"/>
+  <!-- 3 órbitas elípticas cruzadas -->
   <ellipse cx="30" cy="30" rx="26" ry="9"
     fill="none" stroke="#FF5820" stroke-width="3.5"/>
-  <!-- Orbit 2: rotated 60° -->
   <ellipse cx="30" cy="30" rx="26" ry="9"
     fill="none" stroke="#FF5820" stroke-width="3.5" transform="rotate(60,30,30)"/>
-  <!-- Orbit 3: rotated 120° -->
   <ellipse cx="30" cy="30" rx="26" ry="9"
     fill="none" stroke="#FF5820" stroke-width="3.5" transform="rotate(120,30,30)"/>
-  <!-- Nucleus -->
-  <circle cx="30" cy="30" r="6" fill="#FF5820"/>
+  <!-- Núcleo -->
+  <circle cx="30" cy="30" r="7" fill="#FF5820"/>
+  <!-- Brillo del núcleo (esquina superior izquierda) -->
+  <circle cx="27" cy="27" r="3" fill="rgba(255,200,140,0.55)"/>
 `}
 
-/* ─── ZONA MUERTA ☠: calavera mínima ─────────────────────────────── */
+/* ─── ZONA MUERTA ☠: calavera con mandíbula y cuencas dramáticas ──── */
 function desertIcons(){return `
-  <!-- Cranium -->
-  <ellipse cx="30" cy="25" rx="20" ry="21"
+  <!-- Sombra cráneo -->
+  <ellipse cx="30" cy="24" rx="21" ry="20" fill="rgba(40,0,80,0.35)" transform="translate(2,2)"/>
+  <!-- Cráneo -->
+  <ellipse cx="30" cy="23" rx="21" ry="20"
     fill="none" stroke="#8860CC" stroke-width="4"/>
-  <!-- Left eye socket (filled) -->
-  <ellipse cx="21" cy="26" rx="7" ry="6.5" fill="#8860CC"/>
-  <!-- Right eye socket (filled) -->
-  <ellipse cx="39" cy="26" rx="7" ry="6.5" fill="#8860CC"/>
-  <!-- Nasal notch -->
-  <path d="M27,38 L33,38 L30,43 Z" fill="#8860CC"/>
-  <!-- Jaw arch -->
-  <path d="M11,42 C11,55 49,55 49,42"
-    fill="none" stroke="#8860CC" stroke-width="3.5" stroke-linecap="round"/>
-  <!-- Two teeth -->
-  <line x1="23" y1="44" x2="23" y2="54" stroke="#8860CC" stroke-width="3.5" stroke-linecap="round"/>
-  <line x1="30" y1="44" x2="30" y2="56" stroke="#8860CC" stroke-width="3.5" stroke-linecap="round"/>
-  <line x1="37" y1="44" x2="37" y2="54" stroke="#8860CC" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Cuenca izquierda con interior oscuro -->
+  <ellipse cx="20" cy="25" rx="7.5" ry="7" fill="#8860CC"/>
+  <ellipse cx="20" cy="24" rx="4"   ry="3.5" fill="rgba(20,8,44,0.75)"/>
+  <!-- Cuenca derecha -->
+  <ellipse cx="40" cy="25" rx="7.5" ry="7" fill="#8860CC"/>
+  <ellipse cx="40" cy="24" rx="4"   ry="3.5" fill="rgba(20,8,44,0.75)"/>
+  <!-- Cavidad nasal -->
+  <path d="M27,37 L33,37 L30,43 Z" fill="#8860CC"/>
+  <!-- Mandíbula arqueada -->
+  <path d="M10,42 Q30,60 50,42"
+    fill="none" stroke="#8860CC" stroke-width="4" stroke-linecap="round"/>
+  <!-- 3 dientes -->
+  <line x1="21" y1="44" x2="21" y2="55" stroke="#8860CC" stroke-width="4" stroke-linecap="round"/>
+  <line x1="30" y1="45" x2="30" y2="57" stroke="#8860CC" stroke-width="4" stroke-linecap="round"/>
+  <line x1="39" y1="44" x2="39" y2="55" stroke="#8860CC" stroke-width="4" stroke-linecap="round"/>
+  <!-- Arco de luz superior del cráneo -->
+  <ellipse cx="30" cy="23" rx="21" ry="20"
+    fill="none" stroke="rgba(195,155,255,0.4)" stroke-width="2"
+    stroke-dasharray="28 104" stroke-dashoffset="-44"/>
 `}
 
 /* ─── HELPER: terreno → color de borde glow ─────────────────────── */
