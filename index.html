@@ -886,6 +886,66 @@ body.remote .toast-item{
 /* ========== ENHANCED DICE ========== */
 .die.rolling{animation:dieRoll .65s cubic-bezier(.4,1.6,.5,1)}
 .die.rolling-active{font-size:22px;color:rgba(26,20,10,0.6)}
+
+/* ========== BOT THINKING ========== */
+@keyframes thinkDot{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+.thinking-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--gold);margin:0 1.5px;animation:thinkDot 1s ease-in-out infinite}
+.thinking-dot:nth-child(2){animation-delay:.18s}
+.thinking-dot:nth-child(3){animation-delay:.36s}
+.bot-thinking-row{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--gold-soft);margin-top:3px;padding:3px 0}
+#botActionToast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:500;
+  background:rgba(10,13,20,0.92);border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px;padding:7px 16px;font-size:12px;color:var(--ink-dim);
+  backdrop-filter:blur(10px);pointer-events:none;transition:opacity .3s;opacity:0;
+  white-space:nowrap;
+}
+#botActionToast.show{opacity:1}
+
+/* ========== ZOOM CONTROLS ========== */
+#boardWrap{position:relative;overflow:hidden}
+#zoomControls{
+  position:absolute;bottom:14px;right:14px;z-index:20;
+  display:flex;flex-direction:column;gap:5px;
+}
+.zoom-btn{
+  width:32px;height:32px;border-radius:8px;
+  background:rgba(8,11,18,0.82);border:1px solid rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.65);font-size:17px;display:grid;place-items:center;
+  cursor:pointer;transition:all .15s;backdrop-filter:blur(8px);
+  -webkit-user-select:none;user-select:none;line-height:1;
+}
+.zoom-btn:hover{background:rgba(217,180,106,0.15);border-color:rgba(217,180,106,0.45);color:var(--gold)}
+
+/* ========== GHOST PREVIEW ========== */
+#ghostSettlement,#ghostCity{transition:opacity .1s}
+
+/* ========== REACTION BAR ========== */
+#reactionBar{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;
+  margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.07)}
+.react-btn{background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;
+  font-size:18px;padding:3px 8px;cursor:pointer;transition:all .12s;line-height:1}
+.react-btn:hover{background:rgba(255,255,255,0.1);transform:scale(1.3);border-color:rgba(255,255,255,0.25)}
+.react-btn:active{transform:scale(0.9)}
+@keyframes reactFloat{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}
+  15%{opacity:1;transform:translate(-50%,-50%) scale(1.4)}
+  45%{opacity:1;transform:translate(-50%,-90%) scale(1.1)}
+  100%{opacity:0;transform:translate(-50%,-220%) scale(.8)}
+}
+.board-reaction-el{position:absolute;left:50%;top:50%;font-size:48px;
+  pointer-events:none;z-index:40;animation:reactFloat 2.2s ease-out forwards}
+
+/* ========== CONTINUE GAME ========== */
+#btnContinueGame{
+  width:100%;padding:12px 16px;border-radius:10px;cursor:pointer;margin-bottom:14px;
+  background:linear-gradient(135deg,rgba(217,180,106,0.12),rgba(217,180,106,0.04));
+  border:1px solid rgba(217,180,106,0.38);color:var(--gold-soft);
+  font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center;
+  transition:all .2s;
+}
+#btnContinueGame:hover{background:rgba(217,180,106,0.2);border-color:var(--gold)}
+#btnContinueGame.hidden{display:none!important}
 </style>
 </head>
 <body class="board">
@@ -897,6 +957,11 @@ body.remote .toast-item{
   <div class="modal-card">
     <h1>Colonos</h1>
     <div class="tag">Edición Jugable · Mesa Digital</div>
+
+    <!-- Continue saved game (shown only if localStorage has a valid save) -->
+    <button id="btnContinueGame" class="hidden">
+      🚀 Continuar partida guardada
+    </button>
 
     <h2>1. Modo de Juego</h2>
     <div class="modal-modes">
@@ -1303,6 +1368,14 @@ body.remote .toast-item{
   <main id="stage">
     <div id="boardWrap">
       <svg id="board" viewBox="-500 -500 1000 1000" xmlns="http://www.w3.org/2000/svg"></svg>
+      <!-- Zoom controls -->
+      <div id="zoomControls" class="board-only">
+        <button class="zoom-btn" id="btnZoomIn"    title="Acercar">+</button>
+        <button class="zoom-btn" id="btnZoomReset" title="Vista completa">⌂</button>
+        <button class="zoom-btn" id="btnZoomOut"   title="Alejar">−</button>
+      </div>
+      <!-- Bot action toast -->
+      <div id="botActionToast"></div>
     </div>
 
     <!-- Overlay con turno actual -->
@@ -1389,6 +1462,17 @@ body.remote .toast-item{
         <button class="btn" id="bBtnTradePlayer" style="font-size:12px;padding:8px 6px">🤝 Jugadores</button>
       </div>
       <button class="btn" id="bBtnCancel" style="width:100%;font-size:12px;display:none;border-color:rgba(239,68,68,0.4);color:rgba(239,68,68,0.8)">✕ Cancelar colocación</button>
+      <!-- Reaction bar -->
+      <div id="reactionBar">
+        <button class="react-btn" data-emoji="🎉">🎉</button>
+        <button class="react-btn" data-emoji="👍">👍</button>
+        <button class="react-btn" data-emoji="😤">😤</button>
+        <button class="react-btn" data-emoji="💀">💀</button>
+        <button class="react-btn" data-emoji="🔥">🔥</button>
+        <button class="react-btn" data-emoji="🚀">🚀</button>
+        <button class="react-btn" data-emoji="😂">😂</button>
+        <button class="react-btn" data-emoji="⭐">⭐</button>
+      </div>
     </div>
 
     <!-- Cartas de desarrollo del jugador activo (juego local) -->
@@ -2196,6 +2280,7 @@ function startGame(opts){
   STATE.gameStartTime = Date.now();
   STATE.gameDuration = null;
   AudioEngine.startMusic();
+  BoardView.reset();
   startGameTimer();
   logEvent('🚀 ¡Partida iniciada! · Fase de colonización espacial', '#d9b46a');
   renderAll();
@@ -2530,6 +2615,7 @@ function placeSettlement(vertexId, playerId){
     payCost(me, COSTS.settlement);
   }
   AudioEngine.sfx.settle();
+  if(me.isBot) flashBotAction(me, 'construye Base Lunar 🛸');
   me.settlements.push({vertex:vertexId});
   me.vp++;
   logEvent(`${me.name} construye Base Lunar 🛸`, me.color);
@@ -2557,6 +2643,7 @@ function placeRoad(edgeId, playerId){
     payCost(me, COSTS.road);
   }
   AudioEngine.sfx.road();
+  if(me.isBot) flashBotAction(me, 'traza Corredor Estelar 🚀');
   me.roads.push({edge:edgeId});
 
   // Recalcular ruta más larga
@@ -2586,6 +2673,7 @@ function placeCity(vertexId, playerId){
     return toast('Debes mejorar una de tus Bases Lunares', true);
   }
   AudioEngine.sfx.city();
+  if(me.isBot) flashBotAction(me, 'construye Metrópolis 🌌');
   payCost(me, COSTS.city);
   me.settlements = me.settlements.filter(s=>s.vertex!==vertexId);
   me.cities.push({vertex:vertexId});
@@ -3030,6 +3118,20 @@ function renderBoard(){
     <line x1="0" y1="-25" x2="0" y2="-14" stroke="rgba(217,180,106,0.5)" stroke-width="1" stroke-linecap="round"/>
     <line x1="0" y1="14" x2="0" y2="25" stroke="rgba(217,180,106,0.5)" stroke-width="1" stroke-linecap="round"/>
     <circle cx="0" cy="0" r="2" fill="rgba(217,180,106,0.55)"/>
+    <!-- Ghost settlement: house silhouette -->
+    <g id="ghostSettlement" display="none" opacity="0.85">
+      <polygon points="0,-22 13,-8 13,10 -13,10 -13,-8"
+        fill="rgba(217,180,106,0.18)" stroke="rgba(217,180,106,0.8)" stroke-width="1.8" stroke-linejoin="round"/>
+      <polygon points="-6,-8 6,-8 0,-18"
+        fill="rgba(217,180,106,0.22)" stroke="rgba(217,180,106,0.8)" stroke-width="1.8" stroke-linejoin="round"/>
+    </g>
+    <!-- Ghost city: two-tier silhouette -->
+    <g id="ghostCity" display="none" opacity="0.85">
+      <polygon points="0,-26 15,-10 15,12 -15,12 -15,-10"
+        fill="rgba(217,180,106,0.15)" stroke="rgba(217,180,106,0.85)" stroke-width="2" stroke-linejoin="round"/>
+      <polygon points="-15,-10 -5,-10 -5,-22 5,-22 5,-10 15,-10"
+        fill="rgba(217,180,106,0.2)" stroke="rgba(217,180,106,0.85)" stroke-width="1.8" stroke-linejoin="round"/>
+    </g>
   `;
   gBoard.appendChild(gCursor);
 
@@ -3037,6 +3139,7 @@ function renderBoard(){
   renderBuildings();
   updateProbabilityGrid();
   setupBoardCursor();
+  setupBoardZoom();
 }
 
 /* Asigna tipos a los puertos respetando proporciones oficiales de Catan
@@ -3408,6 +3511,123 @@ function renderInteractiveSpots(){
   });
 }
 
+/* ─── BoardView: zoom & pan ─── */
+const BoardView = {
+  x:-500, y:-500, w:1000, h:1000,
+  minW:300, maxW:2200,
+  _drag:false, _lx:0, _ly:0, _touches:null,
+
+  apply(){ const svg=document.getElementById('board'); if(svg) svg.setAttribute('viewBox',`${this.x} ${this.y} ${this.w} ${this.h}`); },
+  zoom(factor, cx, cy){
+    const nw = Math.max(this.minW, Math.min(this.maxW, this.w * factor));
+    const scale = nw/this.w;
+    this.x = cx-(cx-this.x)*scale; this.y = cy-(cy-this.y)*scale;
+    this.w = nw; this.h = nw;
+    this.apply();
+  },
+  pan(dx,dy){ this.x-=dx; this.y-=dy; this.apply(); },
+  reset(){ this.x=-500; this.y=-500; this.w=1000; this.h=1000; this.apply(); },
+  toSVG(e){
+    const svg=document.getElementById('board'); if(!svg) return {x:0,y:0};
+    const r=svg.getBoundingClientRect();
+    return { x: this.x+(e.clientX-r.left)/r.width*this.w, y: this.y+(e.clientY-r.top)/r.height*this.h };
+  }
+};
+
+function setupBoardZoom(){
+  const svg = document.getElementById('board');
+  if(!svg || svg._zoomSetup) return;
+  svg._zoomSetup = true;
+
+  // Wheel zoom
+  svg.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const p = BoardView.toSVG(e);
+    BoardView.zoom(e.deltaY>0 ? 1.12 : 0.9, p.x, p.y);
+  }, {passive:false});
+
+  // Right-click drag pan
+  svg.addEventListener('contextmenu', e=>e.preventDefault());
+  svg.addEventListener('mousedown', e=>{
+    if(e.button===2 || e.altKey){ BoardView._drag=true; BoardView._lx=e.clientX; BoardView._ly=e.clientY; svg.style.cursor='grabbing'; e.preventDefault(); }
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!BoardView._drag) return;
+    const r=svg.getBoundingClientRect();
+    BoardView.pan((e.clientX-BoardView._lx)/r.width*BoardView.w, (e.clientY-BoardView._ly)/r.height*BoardView.h);
+    BoardView._lx=e.clientX; BoardView._ly=e.clientY;
+  });
+  window.addEventListener('mouseup', e=>{ if(e.button===2||BoardView._drag){ BoardView._drag=false; svg.style.cursor=''; } });
+
+  // Touch pinch + pan
+  svg.addEventListener('touchstart', e=>{ BoardView._touches=Array.from(e.touches); }, {passive:true});
+  svg.addEventListener('touchmove', e=>{
+    const t=Array.from(e.touches);
+    if(t.length===2 && BoardView._touches?.length===2){
+      const d0=Math.hypot(BoardView._touches[0].clientX-BoardView._touches[1].clientX, BoardView._touches[0].clientY-BoardView._touches[1].clientY);
+      const d1=Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+      if(d0>0){
+        const mx=(t[0].clientX+t[1].clientX)/2, my=(t[0].clientY+t[1].clientY)/2;
+        const r=svg.getBoundingClientRect();
+        const cx=BoardView.x+(mx-r.left)/r.width*BoardView.w, cy=BoardView.y+(my-r.top)/r.height*BoardView.h;
+        BoardView.zoom(d0/d1, cx, cy);
+      }
+    } else if(t.length===1 && BoardView._touches?.length===1 && !STATE.pendingAction){
+      const r=svg.getBoundingClientRect();
+      BoardView.pan((t[0].clientX-BoardView._touches[0].clientX)/r.width*BoardView.w, (t[0].clientY-BoardView._touches[0].clientY)/r.height*BoardView.h);
+    }
+    BoardView._touches=t; e.preventDefault();
+  },{passive:false});
+  svg.addEventListener('touchend', ()=>{ BoardView._touches=null; });
+
+  // Double-click reset
+  svg.addEventListener('dblclick', e=>{ if(!STATE.pendingAction) BoardView.reset(); });
+
+  // Zoom buttons
+  document.getElementById('btnZoomIn')?.addEventListener('click', ()=>BoardView.zoom(0.8, 0, 0));
+  document.getElementById('btnZoomOut')?.addEventListener('click', ()=>BoardView.zoom(1.25, 0, 0));
+  document.getElementById('btnZoomReset')?.addEventListener('click', ()=>BoardView.reset());
+}
+
+/* ─── Bot thinking indicator ─── */
+function showBotThinking(player){
+  const cards = document.querySelectorAll('.player-card-detailed');
+  const idx = STATE.players.indexOf(player);
+  if(idx>=0 && cards[idx]){
+    let row = cards[idx].querySelector('.bot-thinking-row');
+    if(!row){
+      row = document.createElement('div');
+      row.className = 'bot-thinking-row';
+      row.innerHTML = '<span style="opacity:.6">Pensando</span><span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span>';
+      cards[idx].appendChild(row);
+    }
+  }
+}
+function hideBotThinking(){
+  document.querySelectorAll('.bot-thinking-row').forEach(r=>r.remove());
+}
+function flashBotAction(player, msg){
+  hideBotThinking();
+  const t = document.getElementById('botActionToast');
+  if(!t) return;
+  const color = PLAYER_COLORS[player.color]?.hex || '#d9b46a';
+  t.innerHTML = `<span style="color:${color};font-weight:600">${player.name}</span> ${msg}`;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ─── Board emoji reactions ─── */
+function showBoardReaction(emoji){
+  const wrap = document.getElementById('boardWrap');
+  if(!wrap) return;
+  AudioEngine.sfx.click();
+  const el = document.createElement('div');
+  el.className = 'board-reaction-el';
+  el.textContent = emoji;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 2400);
+}
+
 /* Cursor targeting ring — follows mouse, snaps to nearest valid vertex */
 function setupBoardCursor(){
   const svg = document.getElementById('board');
@@ -3465,6 +3685,15 @@ function setupBoardCursor(){
         ring.setAttribute('stroke-dasharray','5 3');
       }
     }
+    // Show/hide ghost building preview
+    const ghostS = document.getElementById('ghostSettlement');
+    const ghostC = document.getElementById('ghostCity');
+    if(ghostS) ghostS.setAttribute('display', (action.type==='place-settlement' && best) ? '' : 'none');
+    if(ghostC) ghostC.setAttribute('display', (action.type==='place-city' && best) ? '' : 'none');
+    // Tint ghost with player color
+    const curPlayer = STATE.players?.[STATE.currentPlayerIdx];
+    const pHex = PLAYER_COLORS[curPlayer?.color]?.hex || '#d9b46a';
+    [ghostS, ghostC].forEach(g=>{ if(g && g.getAttribute('display')!=='none') g.querySelectorAll('polygon').forEach(poly=>poly.setAttribute('stroke', pHex)); });
   });
 
   svg.addEventListener('mouseleave', ()=>{
@@ -4609,7 +4838,13 @@ function autoDiscardBest(playerId, n){
 let _botTimer = null;
 function _schedBot(fn, ms=850){
   if(_botTimer) return;
-  _botTimer = setTimeout(()=>{ _botTimer=null; fn(); }, ms);
+  const player = STATE.players[STATE.currentPlayerIdx];
+  if(player?.isBot) setTimeout(()=>showBotThinking(player), 50);
+  _botTimer = setTimeout(()=>{
+    _botTimer=null;
+    hideBotThinking();
+    fn();
+  }, ms);
 }
 function _cancelBot(){ if(_botTimer){ clearTimeout(_botTimer); _botTimer=null; } }
 
@@ -7913,9 +8148,25 @@ function loadLocal(){
     const raw = localStorage.getItem('catan_projector_v2');
     if(!raw) return false;
     const s = JSON.parse(raw);
+    if(!s?.appMode || !s?.hexes?.length) return false;
     Object.assign(STATE, s);
+    // Rebuild vertex/edge Maps from saved hexes (Maps don't serialize to JSON)
+    STATE.size = STATE.gameMode==='ext' ? HEX_SIZE_EXT : HEX_SIZE_BASE;
+    const ve = buildVertexEdgeMap(STATE.hexes, STATE.size);
+    STATE.vertices = ve.vertices;
+    STATE.edges = ve.edges;
+    if(STATE.ports?.length) assignPorts();
     return true;
-  }catch(e){return false}
+  }catch(e){ console.warn('loadLocal failed:', e); return false; }
+}
+
+function hasSavedGame(){
+  try{
+    const raw = localStorage.getItem('catan_projector_v2');
+    if(!raw) return false;
+    const s = JSON.parse(raw);
+    return !!(s?.phase && s.phase !== 'lobby' && s.phase !== 'gameover' && s?.players?.length);
+  }catch(e){ return false; }
 }
 
 function exportPNG(){
@@ -8678,6 +8929,38 @@ function bindBoardEvents(){
   document.getElementById('bBtnTrade').onclick = openTradeModal;
   document.getElementById('bBtnTradePlayer').onclick = openPlayerTradeModal;
   document.getElementById('bBtnCancel').onclick = cancelPlacement;
+
+  // Emoji reaction bar
+  document.querySelectorAll('.react-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>showBoardReaction(btn.dataset.emoji));
+  });
+
+  // Continue saved game button
+  const continueBtn = document.getElementById('btnContinueGame');
+  if(continueBtn){
+    if(hasSavedGame()){
+      const raw = JSON.parse(localStorage.getItem('catan_projector_v2'));
+      const names = raw.players?.map(p=>p.name).join(', ') || '';
+      const phase = {starting:'colocación inicial',rolling:'tirar dados',main:'turno principal',robber:'Space Pirate',discard:'descartando'}[raw.phase] || raw.phase;
+      continueBtn.innerHTML = `🚀 Continuar — <span style="color:var(--ink-dim);font-size:11px;font-weight:400">${names} · ${phase}</span>`;
+      continueBtn.classList.remove('hidden');
+      continueBtn.onclick = ()=>{
+        document.getElementById('startModal').classList.add('hidden');
+        if(loadLocal()){
+          STATE.appMode = 'board';
+          initSyncBoard();
+          renderAll();
+          checkBotTurn();
+          AudioEngine.startMusic();
+          toast('¡Partida restaurada!');
+        } else {
+          toast('No se pudo restaurar la partida', true);
+        }
+      };
+    } else {
+      continueBtn.classList.add('hidden');
+    }
+  }
 
   // Modal close buttons (board mode)
   document.getElementById('btnCloseTrade').onclick = ()=>{ document.getElementById('tradeModal').classList.add('hidden'); };
