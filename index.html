@@ -476,6 +476,28 @@ body.board.projector #projectorScoreboard{display:flex}
 }
 .psr-rm:hover{color:var(--red);background:rgba(192,57,43,0.1)}
 
+/* ── Tutorial tooltips ─────────────────────────────────────── */
+.tutorial-hint{
+  position:fixed;bottom:76px;left:50%;transform:translateX(-50%);
+  background:rgba(6,14,28,0.97);border:1px solid rgba(90,173,255,0.55);
+  border-radius:12px;padding:11px 16px;z-index:9500;
+  color:#e8f4ff;font-size:13px;line-height:1.4;
+  box-shadow:0 0 24px rgba(90,173,255,0.2),0 8px 24px rgba(0,0,0,0.5);
+  display:flex;align-items:center;gap:12px;max-width:420px;width:calc(100vw - 32px);
+  animation:tutIn 0.28s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes tutIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.tutorial-hint .tut-ok{
+  flex:0 0 auto;background:rgba(90,173,255,0.18);border:1px solid rgba(90,173,255,0.5);
+  color:#5AADFF;border-radius:7px;padding:5px 11px;cursor:pointer;font-size:11px;
+  font-weight:600;white-space:nowrap;transition:background 0.15s;
+}
+.tutorial-hint .tut-ok:hover{background:rgba(90,173,255,0.32);}
+.tutorial-hint .tut-skip{
+  flex:0 0 auto;color:rgba(255,255,255,0.25);font-size:10px;cursor:pointer;padding:2px 4px;
+}
+.tutorial-hint .tut-skip:hover{color:rgba(255,255,255,0.55);}
+
 .btn-block{display:block;width:100%;padding:14px;font-size:14px;margin-top:8px;touch-action:manipulation;min-height:48px}
 
 /* ===========================================================
@@ -1078,6 +1100,16 @@ body.remote .toast-item{
     <div style="display:flex;gap:6px;margin-top:4px">
       <button class="btn" id="btnAddPlayer" style="font-size:11px;padding:6px 10px;flex:1">👤 Añadir Humano</button>
       <button class="btn" id="btnAddBot"    style="font-size:11px;padding:6px 10px;flex:1;border-color:rgba(34,197,94,0.4);color:rgba(34,197,94,0.85)">🤖 Añadir Bot</button>
+    </div>
+    <!-- Bot speed control -->
+    <div id="botSpeedRow" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:7px 10px;background:rgba(255,255,255,0.04);border-radius:8px;border:1px solid rgba(255,255,255,0.08)">
+      <span style="font-size:11px;color:rgba(255,255,255,0.45);flex:0 0 auto">🤖 Velocidad bots:</span>
+      <div id="botSpeedBtns" style="display:flex;gap:4px;flex:1">
+        <button class="bot-spd" data-speed="slow"    style="flex:1;font-size:10px;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);cursor:pointer">🐢 Lento</button>
+        <button class="bot-spd selected-spd" data-speed="normal" style="flex:1;font-size:10px;padding:4px 6px;border-radius:5px;border:1px solid rgba(251,191,36,0.6);background:rgba(251,191,36,0.12);color:#fbbf24;cursor:pointer">⚡ Normal</button>
+        <button class="bot-spd" data-speed="fast"    style="flex:1;font-size:10px;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);cursor:pointer">🚀 Rápido</button>
+        <button class="bot-spd" data-speed="instant" style="flex:1;font-size:10px;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);cursor:pointer">⚡⚡ Instantáneo</button>
+      </div>
     </div>
 
     <h2>3. Tipo de Partida</h2>
@@ -2368,6 +2400,7 @@ function startGame(opts){
     connected:false, deviceId:null
   }));
   STATE.size = STATE.gameMode==='ext'?HEX_SIZE_EXT:HEX_SIZE_BASE;
+  STATE.botSpeed = opts.botSpeed || SETUP.botSpeed || 'normal';
   newBoard();
   STATE.devDeck = buildDevDeck(STATE.gameMode, STATE.seed);
 
@@ -2391,6 +2424,8 @@ function startGame(opts){
   initStarField();
   startGameTimer();
   logEvent('🚀 ¡Partida iniciada! · Fase de colonización espacial', '#d9b46a');
+  // Tutorial en primera partida
+  if(!_tutDone) setTimeout(()=>showTutorial(0), 1200);
   renderAll();
   broadcastState();
 }
@@ -2480,6 +2515,8 @@ function showDiceOverlay(d1, d2, onDone){
 function rollDice(){
   if(STATE.phase !== 'rolling' && STATE.phase !== 'main') return toast('No es momento de tirar', true);
   if(STATE.phase === 'main' && STATE.lastRoll) return toast('Ya tiraste este turno', true);
+  // Tutorial: después de la primera tirada, mostrar hint de construcción
+  if(!_tutDone) setTimeout(()=>showTutorial(2), 3500);
 
   const d1=1+Math.floor(Math.random()*6);
   const d2=1+Math.floor(Math.random()*6);
@@ -3142,10 +3179,14 @@ function checkVictory(){
       stopGameTimer();
       logEvent(`🏆 ¡${p.name} GANA con ${total} puntos!`, p.color);
       broadcastState();
+      AudioEngine.setMood('normal');
       if(STATE.appMode === 'board') showWinnerPopup(p, total);
       return;
     }
   }
+  // Cambiar a música de tensión si alguien está a 1-2 puntos del win
+  const nearWin = STATE.players.some(p=>(p.vp+(p._lrBonus||0)+(p._laBonus||0)) >= target-2);
+  try { AudioEngine.setMood(nearWin ? 'tension' : 'normal'); } catch(e){}
 }
 
 /* =============== MÓDULO 10: COMERCIO ================ */
@@ -3482,114 +3523,130 @@ function getBorderVertices(){
 }
 
 function renderPorts(parent){
-  // Asegurar que STATE.ports existe (lo generamos al crear el tablero)
   if(!STATE.ports || STATE.ports.length===0) return;
+  const NS = 'http://www.w3.org/2000/svg';
+
+  // Helper: hexágono plano pequeño centrado en (cx,cy) radio r
+  function portHex(cx, cy, r){
+    let d='';
+    for(let i=0;i<6;i++){
+      const a = Math.PI/180*(60*i-30);
+      d += (i?'L':'M') + (cx+r*Math.cos(a)).toFixed(1) + ',' + (cy+r*Math.sin(a)).toFixed(1);
+    }
+    return d+'Z';
+  }
+
+  // Centro del tablero (para calcular dirección hacia afuera)
+  let cX=0, cY=0;
+  STATE.hexes.forEach(h=>{const p=hexToPixel(h.q,h.r,STATE.size);cX+=p.x;cY+=p.y;});
+  cX/=STATE.hexes.length; cY/=STATE.hexes.length;
 
   STATE.ports.forEach(port=>{
     const v1 = STATE.vertices.get(port.vertex1);
     const v2 = STATE.vertices.get(port.vertex2);
     if(!v1 || !v2) return;
 
-    // Centro de la arista del puerto
-    const mx = (v1.x + v2.x)/2;
-    const my = (v1.y + v2.y)/2;
-
-    // Calcular dirección "hacia afuera" (alejándose del centro del tablero)
-    let cX=0, cY=0;
-    STATE.hexes.forEach(h=>{const p=hexToPixel(h.q,h.r,STATE.size);cX+=p.x;cY+=p.y;});
-    cX/=STATE.hexes.length; cY/=STATE.hexes.length;
+    const mx = (v1.x+v2.x)/2, my = (v1.y+v2.y)/2;
     const dx = mx-cX, dy = my-cY;
     const dist = Math.sqrt(dx*dx+dy*dy);
     const ndx = dx/dist, ndy = dy/dist;
-    const offset = 38;
-    const px = mx + ndx*offset;
-    const py = my + ndy*offset;
+    const px = mx + ndx*40, py = my + ndy*40;
 
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    // Colores del puerto
+    const is3to1 = port.type==='3:1';
+    const info = is3to1 ? null : RESOURCE_INFO[port.type];
+    const accentColor = is3to1 ? '#d9b46a' : info.color;
+    const label = is3to1 ? '3:1' : '2:1';
+    const sub   = is3to1 ? '✦' : info.emoji;
+
+    const g = document.createElementNS(NS,'g');
     g.setAttribute('class','port');
 
-    // Líneas de muelle conectando puerto con los 2 vértices
-    [v1, v2].forEach(v=>{
-      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-      line.setAttribute('x1', v.x);
-      line.setAttribute('y1', v.y);
-      line.setAttribute('x2', px);
-      line.setAttribute('y2', py);
-      line.setAttribute('stroke','rgba(217,180,106,0.65)');
-      line.setAttribute('stroke-width','3');
-      line.setAttribute('stroke-dasharray','4 3');
-      line.setAttribute('stroke-linecap','round');
-      g.appendChild(line);
+    // Líneas de amarre: dos cables delgados hacia los vértices
+    [v1,v2].forEach(v=>{
+      // Cable exterior (más grueso, color terreno)
+      const cable = document.createElementNS(NS,'line');
+      cable.setAttribute('x1',v.x); cable.setAttribute('y1',v.y);
+      cable.setAttribute('x2',px);  cable.setAttribute('y2',py);
+      cable.setAttribute('stroke', accentColor);
+      cable.setAttribute('stroke-width','1.8');
+      cable.setAttribute('stroke-opacity','0.5');
+      cable.setAttribute('stroke-linecap','round');
+      g.appendChild(cable);
+      // Hilo interior (fino, blanco)
+      const wire = document.createElementNS(NS,'line');
+      wire.setAttribute('x1',v.x); wire.setAttribute('y1',v.y);
+      wire.setAttribute('x2',px);  wire.setAttribute('y2',py);
+      wire.setAttribute('stroke','rgba(255,255,255,0.18)');
+      wire.setAttribute('stroke-width','0.7');
+      wire.setAttribute('stroke-dasharray','3 4');
+      wire.setAttribute('stroke-linecap','round');
+      g.appendChild(wire);
     });
 
-    // Determinar color y label
-    let bgColor, ringColor, label, sub, iconHTML='';
-    if(port.type === '3:1'){
-      bgColor = 'rgba(20,26,35,0.92)';
-      ringColor = '#d9b46a';
-      label = '3:1';
-      sub = '?';
-    } else {
-      const info = RESOURCE_INFO[port.type];
-      bgColor = info.color;
-      ringColor = '#fff';
-      label = '2:1';
-      sub = info.emoji;
-    }
+    // Glow aura exterior
+    const glow = document.createElementNS(NS,'path');
+    glow.setAttribute('d', portHex(px,py,30));
+    glow.setAttribute('fill','none');
+    glow.setAttribute('stroke', accentColor);
+    glow.setAttribute('stroke-width','8');
+    glow.setAttribute('opacity','0.22');
+    glow.setAttribute('filter','url(#hexGlowFx)');
+    g.appendChild(glow);
 
-    // Círculo de fondo
-    const bg = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    bg.setAttribute('cx', px);
-    bg.setAttribute('cy', py);
-    bg.setAttribute('r', 24);
-    bg.setAttribute('fill', bgColor);
-    bg.setAttribute('stroke', ringColor);
-    bg.setAttribute('stroke-width', 2.5);
+    // Fondo hexagonal
+    const bg = document.createElementNS(NS,'path');
+    bg.setAttribute('d', portHex(px,py,24));
+    bg.setAttribute('fill', is3to1 ? 'rgba(6,14,30,0.94)' : `rgba(${hexToRgb(info.color)},0.15)`);
+    bg.setAttribute('stroke', accentColor);
+    bg.setAttribute('stroke-width','2.2');
     g.appendChild(bg);
 
-    // Borde decorativo interior
-    const ring = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    ring.setAttribute('cx', px);
-    ring.setAttribute('cy', py);
-    ring.setAttribute('r', 19);
-    ring.setAttribute('fill', 'none');
-    ring.setAttribute('stroke', 'rgba(255,255,255,0.25)');
-    ring.setAttribute('stroke-width', 0.6);
+    // Anillo interior decorativo
+    const ring = document.createElementNS(NS,'path');
+    ring.setAttribute('d', portHex(px,py,19));
+    ring.setAttribute('fill','none');
+    ring.setAttribute('stroke',`rgba(255,255,255,0.12)`);
+    ring.setAttribute('stroke-width','1');
     g.appendChild(ring);
 
-    // Ratio (3:1 o 2:1)
-    const ratioText = document.createElementNS('http://www.w3.org/2000/svg','text');
-    ratioText.setAttribute('x', px);
-    ratioText.setAttribute('y', py-3);
-    ratioText.setAttribute('text-anchor', 'middle');
-    ratioText.setAttribute('dominant-baseline', 'middle');
-    ratioText.setAttribute('font-family', 'Cormorant Garamond, serif');
-    ratioText.setAttribute('font-weight', '700');
-    ratioText.setAttribute('font-size', '15');
-    ratioText.setAttribute('fill', port.type==='3:1' ? '#d9b46a' : '#fff');
-    ratioText.textContent = label;
-    g.appendChild(ratioText);
+    // Ratio (2:1 / 3:1)
+    const ratioTxt = document.createElementNS(NS,'text');
+    ratioTxt.setAttribute('x',px); ratioTxt.setAttribute('y',py-4);
+    ratioTxt.setAttribute('text-anchor','middle');
+    ratioTxt.setAttribute('dominant-baseline','middle');
+    ratioTxt.setAttribute('font-family','JetBrains Mono, monospace');
+    ratioTxt.setAttribute('font-size','13');
+    ratioTxt.setAttribute('font-weight','700');
+    ratioTxt.setAttribute('fill', accentColor);
+    ratioTxt.textContent = label;
+    g.appendChild(ratioTxt);
 
-    // Emoji/símbolo del recurso (o ?)
-    const subText = document.createElementNS('http://www.w3.org/2000/svg','text');
-    subText.setAttribute('x', px);
-    subText.setAttribute('y', py+11);
-    subText.setAttribute('text-anchor', 'middle');
-    subText.setAttribute('dominant-baseline', 'middle');
-    subText.setAttribute('font-size', '11');
-    subText.setAttribute('fill', port.type==='3:1' ? 'rgba(217,180,106,0.7)' : 'rgba(255,255,255,0.95)');
-    subText.textContent = sub;
-    g.appendChild(subText);
+    // Símbolo recurso / ✦ para 3:1
+    const subTxt = document.createElementNS(NS,'text');
+    subTxt.setAttribute('x',px); subTxt.setAttribute('y',py+10);
+    subTxt.setAttribute('text-anchor','middle');
+    subTxt.setAttribute('dominant-baseline','middle');
+    subTxt.setAttribute('font-size', is3to1 ? '11' : '12');
+    subTxt.setAttribute('fill', is3to1 ? 'rgba(217,180,106,0.75)' : 'rgba(255,255,255,0.9)');
+    subTxt.textContent = sub;
+    g.appendChild(subTxt);
 
     // Tooltip
-    const title = document.createElementNS('http://www.w3.org/2000/svg','title');
-    title.textContent = port.type === '3:1'
+    const title = document.createElementNS(NS,'title');
+    title.textContent = is3to1
       ? 'Estación Comercial · 3:1 (cualquier recurso)'
-      : `Estación de ${RESOURCE_INFO[port.type].name} · 2:1`;
+      : `Puerto de ${info.name} · 2:1`;
     g.appendChild(title);
 
     parent.appendChild(g);
   });
+}
+
+// Helper: convierte color hex CSS a "r,g,b"
+function hexToRgb(hex){
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return isNaN(r)?'80,80,80':`${r},${g},${b}`;
 }
 
 /* Asigna puertos a aristas de borde, distribuidos uniformemente */
@@ -3664,57 +3721,72 @@ function renderRobber(parent){
 }
 
 function makeNumberToken(cx, cy, num){
+  const NS = 'http://www.w3.org/2000/svg';
   const isHot = RED_NUMBERS.has(num);
-  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const g = document.createElementNS(NS,'g');
   g.setAttribute('class', 'number-token' + (isHot?' hot':''));
 
-  // Sombra exterior
-  const shadow = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  shadow.setAttribute('cx',cx); shadow.setAttribute('cy',cy+2); shadow.setAttribute('r',24);
-  shadow.setAttribute('fill','rgba(0,0,0,0.28)');
+  // Sombra glow exterior
+  const shadow = document.createElementNS(NS,'circle');
+  shadow.setAttribute('cx',cx); shadow.setAttribute('cy',cy+1.5); shadow.setAttribute('r',23);
+  shadow.setAttribute('fill','rgba(0,0,0,0.55)');
   g.appendChild(shadow);
 
-  // Fondo principal
-  const bg = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  // Fondo: panel de vidrio oscuro tipo HUD
+  const bg = document.createElementNS(NS,'circle');
   bg.setAttribute('class','bg');
-  bg.setAttribute('cx',cx); bg.setAttribute('cy',cy); bg.setAttribute('r',23);
-  bg.setAttribute('fill', isHot ? '#fff5ec' : '#f5ecd5');
-  bg.setAttribute('stroke', isHot ? '#c0392b' : '#2a1f0a');
-  bg.setAttribute('stroke-width', isHot ? '2' : '1.5');
-  if(isHot) bg.setAttribute('filter','url(#tokenHot)');
-  else      bg.setAttribute('filter','url(#tokenShadow)');
+  bg.setAttribute('cx',cx); bg.setAttribute('cy',cy); bg.setAttribute('r',22);
+  bg.setAttribute('fill','rgba(4,12,28,0.94)');
+  bg.setAttribute('stroke', isHot ? '#E04828' : '#2E7080');
+  bg.setAttribute('stroke-width', isHot ? '2.5' : '2');
+  bg.setAttribute('filter', isHot ? 'url(#tokenHot)' : 'url(#tokenShadow)');
   g.appendChild(bg);
 
-  // Borde interior sutil
-  const rim = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  rim.setAttribute('cx',cx); rim.setAttribute('cy',cy); rim.setAttribute('r',20);
+  // Anillo interior de escaneo
+  const rim = document.createElementNS(NS,'circle');
+  rim.setAttribute('cx',cx); rim.setAttribute('cy',cy); rim.setAttribute('r',17);
   rim.setAttribute('fill','none');
-  rim.setAttribute('stroke', isHot ? 'rgba(192,57,43,0.3)' : 'rgba(40,25,5,0.12)');
+  rim.setAttribute('stroke', isHot ? 'rgba(224,72,40,0.40)' : 'rgba(46,112,128,0.35)');
   rim.setAttribute('stroke-width','1');
+  rim.setAttribute('stroke-dasharray','3 3.5');
   g.appendChild(rim);
 
-  const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  // Arco de brillo superior
+  const arc = document.createElementNS(NS,'circle');
+  arc.setAttribute('cx',cx); arc.setAttribute('cy',cy); arc.setAttribute('r',22);
+  arc.setAttribute('fill','none');
+  arc.setAttribute('stroke', isHot ? 'rgba(255,160,100,0.35)' : 'rgba(90,200,220,0.25)');
+  arc.setAttribute('stroke-width','2');
+  arc.setAttribute('stroke-dasharray','20 50'); arc.setAttribute('stroke-dashoffset','-8');
+  arc.setAttribute('stroke-linecap','round');
+  g.appendChild(arc);
+
+  // Número: fuente monoespaciada tipo datos
+  const txt = document.createElementNS(NS,'text');
   txt.setAttribute('x',cx); txt.setAttribute('y',cy+1);
   txt.setAttribute('text-anchor','middle');
   txt.setAttribute('dominant-baseline','middle');
-  txt.setAttribute('font-family','Inter Tight, sans-serif');
-  txt.setAttribute('font-size', isHot ? '22' : '20');
-  txt.setAttribute('font-weight','700');
-  txt.setAttribute('fill', isHot ? '#c0392b' : '#1a140a');
-  txt.setAttribute('letter-spacing','-0.5');
+  txt.setAttribute('font-family','JetBrains Mono, monospace');
+  txt.setAttribute('font-size', isHot ? '21' : '19');
+  txt.setAttribute('font-weight','600');
+  txt.setAttribute('fill', isHot ? '#FF6644' : '#58C8E0');
+  txt.setAttribute('letter-spacing','-1');
   txt.textContent = num;
   g.appendChild(txt);
 
+  // Puntos de probabilidad como píxeles cuadrados
   const dots = PROB_DOTS[num] || 0;
   const dotY = cy + 13;
-  const ds = 4;
+  const ds = 4.2;
   const sx = cx - ((dots-1)*ds)/2;
   for(let i=0;i<dots;i++){
-    const d = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    d.setAttribute('cx', sx + i*ds);
-    d.setAttribute('cy', dotY);
-    d.setAttribute('r', 1.5);
-    d.setAttribute('fill', isHot ? '#c0392b' : '#2a1f0a');
+    const d = document.createElementNS(NS,'rect');
+    d.setAttribute('x', (sx + i*ds - 1.4).toFixed(1));
+    d.setAttribute('y', (dotY - 1.4).toFixed(1));
+    d.setAttribute('width','2.8'); d.setAttribute('height','2.8');
+    d.setAttribute('rx','0.5');
+    d.setAttribute('fill', isHot ? '#FF6644' : '#58C8E0');
+    d.setAttribute('opacity', isHot ? '0.88' : '0.65');
     g.appendChild(d);
   }
   return g;
@@ -5181,8 +5253,10 @@ function autoDiscardBest(playerId, n){
 /* =============== MÓDULO 14B: BOT AI ================ */
 // Timer de acción principal (turno del bot)
 let _botTimer = null;
-function _schedBot(fn, ms=850){
+const BOT_SPEEDS = { slow:1900, normal:850, fast:320, instant:60 };
+function _schedBot(fn, _ms){
   if(_botTimer) return;
+  const ms = _ms ?? BOT_SPEEDS[STATE.botSpeed||'normal'] ?? 850;
   const player = STATE.players[STATE.currentPlayerIdx];
   if(player?.isBot) setTimeout(()=>showBotThinking(player), 50);
   _botTimer = setTimeout(()=>{
@@ -8892,6 +8966,8 @@ function clearRelayUrl(){
 const AudioEngine = (() => {
   let ctx = null, masterGain, musicGain, sfxGain;
   let musicNodes = [], musicPlaying = false, musicTimeout = null;
+  let musicMood = 'normal'; // 'normal' | 'tension'
+  let _chordIdxGlobal = 0;
 
   const CFG = {
     master: +(localStorage.getItem('aud_master') ?? 0.7),
@@ -8998,9 +9074,28 @@ const AudioEngine = (() => {
      [440,8],[523.25,9],[659.25,10],[523.25,11],[440,12],[392,13],[329.63,14],[220,15]],
   ];
 
+  // ── Tension progressions: minor/diminished chords, darker feel ──
+  const PROGS_T = [
+    [[110,130.81,155.56],[87.31,110,130.81],[92.5,110,138.59],[82.41,98,123.47]],
+    [[103.83,130.81,155.56],[110,130.81,155.56],[87.31,110,138.59],[82.41,98,130.81]],
+    [[87.31,103.83,130.81],[82.41,98,123.47],[92.5,110,130.81],[87.31,103.83,123.47]],
+    [[110,130.81,155.56],[87.31,103.83,130.81],[82.41,103.83,123.47],[87.31,110,130.81]],
+  ];
+  // ── Tension melodies: lower register, slower, ominous ──
+  const MELS_T = [
+    [[220,0],[246.94,2],[220,4],[196,5],[220,6],[246.94,8],[261.63,10],[220,12],[196,14],[174.61,15]],
+    [[196,0],[220,2],[246.94,3],[220,4],[196,6],[174.61,8],[196,10],[220,12],[196,14],[174.61,15]],
+    [[174.61,0],[196,2],[220,4],[196,6],[174.61,8],[196,10],[174.61,12],[155.56,13],[138.59,14],[130.81,15]],
+    [[220,0],[246.94,1],[220,3],[196,5],[220,7],[246.94,9],[261.63,11],[220,13],[196,15]],
+  ];
+
   function _chord(idx){
     if(!musicPlaying||!ctx) return;
-    const t0=ctx.currentTime+0.05, s=idx%4, prog=PROGS[s];
+    _chordIdxGlobal = idx;
+    const t0=ctx.currentTime+0.05, s=idx%4;
+    const isTension = musicMood==='tension';
+    const prog = isTension ? PROGS_T[s] : PROGS[s];
+    const mel  = isTension ? MELS_T[s]  : MELS[s];
 
     // ── Kick: 80→38 Hz sine sweep ──
     const _kick=t=>{
@@ -9027,11 +9122,18 @@ const AudioEngine = (() => {
       s.buffer=buf; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.025);
       s.connect(f); f.connect(g); g.connect(musicGain); s.start(t); s.stop(t+0.035); musicNodes.push(s);
     };
-    // 4 bars: kick 1&3, snare 2&4, eighth-note hi-hats
+    // 4 bars de batería — tensión: kick cada corchea + snare cada beat
     for(let b=0;b<4;b++){
       const bt=t0+b*4*BEAT;
-      _kick(bt); _snare(bt+BEAT); _kick(bt+2*BEAT); _snare(bt+3*BEAT);
-      for(let h=0;h<8;h++) _hat(bt+h*BEAT*0.5, h%2===0?0.058:0.032);
+      if(isTension){
+        // Kick en corcheas, snare en los 4 tiempos → sensación urgente
+        for(let k=0;k<8;k++) _kick(bt+k*BEAT*0.5);
+        for(let sn=0;sn<4;sn++) _snare(bt+sn*BEAT);
+        for(let h=0;h<16;h++) _hat(bt+h*BEAT*0.25, h%4===0?0.06:0.025);
+      } else {
+        _kick(bt); _snare(bt+BEAT); _kick(bt+2*BEAT); _snare(bt+3*BEAT);
+        for(let h=0;h<8;h++) _hat(bt+h*BEAT*0.5, h%2===0?0.058:0.032);
+      }
     }
     // ── Pads: 2× detuned sawtooth → lowpass filter ──
     prog.forEach((ch,ci)=>{
@@ -9040,32 +9142,46 @@ const AudioEngine = (() => {
         [1,1.004].forEach(dt=>{
           const o=ctx.createOscillator(),flt=ctx.createBiquadFilter(),env=ctx.createGain();
           o.type='sawtooth'; o.frequency.value=f*2*dt;
-          flt.type='lowpass'; flt.frequency.value=720;
-          env.gain.setValueAtTime(0,ct); env.gain.linearRampToValueAtTime(0.018,ct+0.22);
+          flt.type='lowpass'; flt.frequency.value = isTension ? 580 : 720;
+          env.gain.setValueAtTime(0,ct); env.gain.linearRampToValueAtTime(isTension?0.024:0.018,ct+0.22);
           env.gain.linearRampToValueAtTime(0.014,ct+1.75); env.gain.linearRampToValueAtTime(0,ct+2.02);
           o.connect(flt); flt.connect(env); env.connect(musicGain);
           o.start(ct); o.stop(ct+2.08); musicNodes.push(o);
         });
       });
     });
+    // ── En tensión: sub-bass pulsante (ominoso) ──
+    if(isTension){
+      for(let b=0;b<4;b++){
+        const ct=t0+b*4*BEAT, root=prog[b][0]*0.5;
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(root,ct);
+        g.gain.setValueAtTime(0,ct); g.gain.linearRampToValueAtTime(0.18,ct+0.05);
+        g.gain.linearRampToValueAtTime(0.1,ct+1.5); g.gain.linearRampToValueAtTime(0,ct+2.0);
+        o.connect(g); g.connect(musicGain); o.start(ct); o.stop(ct+2.05); musicNodes.push(o);
+      }
+    }
     // ── Bass: punchy syncopated sawtooth hits ──
     prog.forEach((ch,ci)=>{
       const ct=t0+ci*4*BEAT, root=ch[0];
-      [[0,0.26],[0.75,0.15],[1.5,0.26],[2.25,0.15],[3,0.26]].forEach(([b,dur])=>{
+      const patt = isTension
+        ? [[0,0.22],[0.5,0.14],[1,0.22],[1.5,0.14],[2,0.22],[2.5,0.14],[3,0.22],[3.5,0.14]]
+        : [[0,0.26],[0.75,0.15],[1.5,0.26],[2.25,0.15],[3,0.26]];
+      patt.forEach(([b,dur])=>{
         const o=ctx.createOscillator(),g=ctx.createGain(), bt=ct+b*BEAT;
         o.type='sawtooth'; o.frequency.value=root;
-        g.gain.setValueAtTime(0,bt); g.gain.linearRampToValueAtTime(0.13,bt+0.012); g.gain.exponentialRampToValueAtTime(0.0001,bt+dur);
+        g.gain.setValueAtTime(0,bt); g.gain.linearRampToValueAtTime(isTension?0.11:0.13,bt+0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001,bt+dur);
         o.connect(g); g.connect(musicGain); o.start(bt); o.stop(bt+dur+0.02); musicNodes.push(o);
       });
     });
     // ── Lead melody: triangle wave ──
-    const mel=MELS[s];
     mel.forEach(([freq,beat],mi)=>{
       const mt=t0+beat*BEAT, nd=mi+1<mel.length?mel[mi+1][1]:16;
       const dur=Math.min((nd-beat)*BEAT*0.78,0.48);
       const o=ctx.createOscillator(),g=ctx.createGain();
       o.type='triangle'; o.frequency.value=freq;
-      g.gain.setValueAtTime(0,mt); g.gain.linearRampToValueAtTime(0.042,mt+0.016);
+      g.gain.setValueAtTime(0,mt); g.gain.linearRampToValueAtTime(isTension?0.052:0.042,mt+0.016);
       g.gain.exponentialRampToValueAtTime(0.0001,mt+Math.max(dur,0.035));
       o.connect(g); g.connect(musicGain); o.start(mt); o.stop(mt+Math.max(dur,0.035)+0.02); musicNodes.push(o);
     });
@@ -9089,8 +9205,52 @@ const AudioEngine = (() => {
     try{ if(masterGain) masterGain.gain.setTargetAtTime(CFG.muted?0:CFG.master,ctx.currentTime,0.1); }catch(e){}
     return CFG.muted; }
 
-  return { sfx, startMusic, stopMusic, setMaster, setMusic, setSfx, toggleMute, CFG };
+  // Cambia el mood musical. Si estaba tocando, reinicia desde el mismo punto.
+  function setMood(newMood){
+    if(newMood===musicMood) return;
+    musicMood = newMood;
+    if(musicPlaying){
+      clearTimeout(musicTimeout);
+      musicNodes.forEach(n=>{ try{n.stop(ctx.currentTime+0.35);}catch(e){} });
+      musicNodes=[];
+      setTimeout(()=>{ if(musicPlaying) _chord(_chordIdxGlobal); }, 380);
+    }
+  }
+
+  return { sfx, startMusic, stopMusic, setMaster, setMusic, setSfx, toggleMute, setMood, CFG };
 })();
+
+/* ─── Sistema de tutorial (primera partida) ─────────────────────── */
+const TUTORIAL_KEY = 'colonos_tutorial_v1';
+let _tutDone = localStorage.getItem(TUTORIAL_KEY)==='1';
+let _tutTimer = null;
+let _tutEl = null;
+
+const TUTORIAL_STEPS = [
+  { icon:'🌐', text:'Coloca tus Bases Lunares en intersecciones cercanas a <b>recursos variados</b> — diversidad = poder' },
+  { icon:'🎲', text:'Tira los dados al inicio de tu turno. Los números activan los hexágonos adyacentes para <b>darte recursos</b>' },
+  { icon:'🔧', text:'Con recursos puedes <b>construir</b>: Corredores (🚀), Bases (🛸) y Metrópolis (🌌). Panel derecho → Construir' },
+];
+
+function showTutorial(step){
+  if(_tutDone) return;
+  if(_tutEl){ _tutEl.remove(); _tutEl=null; }
+  clearTimeout(_tutTimer);
+  if(step >= TUTORIAL_STEPS.length){
+    localStorage.setItem(TUTORIAL_KEY,'1'); _tutDone=true; return;
+  }
+  const {icon,text} = TUTORIAL_STEPS[step];
+  const el = document.createElement('div');
+  el.className='tutorial-hint'; _tutEl=el;
+  el.innerHTML=`
+    <span style="font-size:20px;flex:0 0 auto">${icon}</span>
+    <span style="flex:1;line-height:1.45">${text}</span>
+    <button class="tut-ok" onclick="showTutorial(${step+1})">OK ✓</button>
+    <button class="tut-skip" onclick="localStorage.setItem('${TUTORIAL_KEY}','1');_tutDone=true;this.closest('.tutorial-hint').remove()">✕</button>
+  `;
+  document.body.appendChild(el);
+  _tutTimer = setTimeout(()=>{ if(el.parentNode){ el.remove(); showTutorial(step+1); } }, 6000);
+}
 
 /* Confetti burst for winner screen */
 function launchConfetti(color){
@@ -9114,6 +9274,7 @@ const SETUP = {
   gameMode: 'base',
   gameType: 'full',
   targetVP: 10,
+  botSpeed: 'normal', // 'slow' | 'normal' | 'fast' | 'instant'
   players: [
     {color:'red',    name:'Tú',       isBot:false, botDifficulty:'medium'},
     {color:'blue',   name:'NOVA-7',   isBot:true,  botDifficulty:'medium'},
@@ -9226,6 +9387,18 @@ function bindBoardEvents(){
       document.querySelectorAll('#vpSelector .vp-btn').forEach(b=>b.classList.remove('selected'));
       btn.classList.add('selected');
       SETUP.targetVP = parseInt(btn.dataset.vp, 10);
+    };
+  });
+  // Bot speed buttons
+  document.querySelectorAll('.bot-spd').forEach(btn=>{
+    btn.onclick = ()=>{
+      SETUP.botSpeed = btn.dataset.speed;
+      document.querySelectorAll('.bot-spd').forEach(b=>{
+        const on = b===btn;
+        b.style.borderColor = on?'rgba(251,191,36,0.6)':'rgba(255,255,255,0.12)';
+        b.style.background  = on?'rgba(251,191,36,0.12)':'rgba(255,255,255,0.05)';
+        b.style.color       = on?'#fbbf24':'rgba(255,255,255,0.4)';
+      });
     };
   });
   document.getElementById('btnAddPlayer').onclick = ()=>{
