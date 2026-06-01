@@ -442,17 +442,47 @@ body.board.projector #projectorScoreboard{display:flex}
 =========================================================== */
 .modal{
   position:fixed;inset:0;z-index:500;display:grid;place-items:center;
-  background:radial-gradient(circle at center, rgba(12,17,23,0.95), rgba(7,9,13,0.98));
-  backdrop-filter:blur(10px);padding:16px;
+  background:
+    radial-gradient(ellipse 70% 50% at 30% 20%, rgba(40,20,80,0.45), transparent 60%),
+    radial-gradient(ellipse 60% 60% at 80% 80%, rgba(10,30,60,0.5), transparent 60%),
+    radial-gradient(circle at center, rgba(10,14,22,0.97), rgba(4,6,14,0.99));
+  backdrop-filter:blur(12px);padding:16px;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .modal.hidden{display:none}
 .modal-card{
   width:min(580px, 100%);max-height:calc(100vh - 40px);overflow-y:auto;
-  border:1px solid var(--line-strong);border-radius:14px;padding:24px;
-  background:linear-gradient(180deg, rgba(20,26,35,0.95), rgba(12,17,23,0.95));
-  box-shadow:0 40px 100px rgba(0,0,0,0.7), 0 0 60px rgba(217,180,106,0.08);
-  touch-action:pan-y;
+  border:1px solid rgba(217,180,106,0.22);border-radius:18px;padding:0;
+  background:linear-gradient(175deg, rgba(16,22,36,0.98), rgba(8,12,22,0.99));
+  box-shadow:0 40px 100px rgba(0,0,0,0.8), 0 0 80px rgba(217,180,106,0.06), 0 0 0 1px rgba(255,255,255,0.04);
+  touch-action:pan-y;overflow:hidden;
+}
+/* Start modal hero */
+#startModal .modal-card > *:not(.start-hero){padding-left:24px;padding-right:24px}
+.start-hero{
+  text-align:center;padding:36px 28px 24px;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse 100% 100% at 50% 0%, rgba(217,180,106,0.12), transparent 70%);
+  border-bottom:1px solid rgba(217,180,106,0.1);
+}
+.start-hero::before{
+  content:'';position:absolute;top:0;left:15%;right:15%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(217,180,106,0.5),transparent);
+}
+/* Animated stars in start modal backdrop */
+.start-hero::after{
+  content:'★ · ✦ · ★ · ✦ · ★ · ✦ · ★';
+  position:absolute;top:12px;left:0;right:0;text-align:center;
+  font-size:8px;letter-spacing:16px;color:rgba(217,180,106,0.18);
+  pointer-events:none;
+}
+.start-hero-title{
+  font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;
+  color:var(--gold-soft);letter-spacing:2px;line-height:1;margin-bottom:4px;
+  text-shadow:0 0 40px rgba(217,180,106,0.4);
+}
+.start-hero-sub{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:5px;
+  color:rgba(217,180,106,0.4);text-transform:uppercase;margin-bottom:0;
 }
 .modal-card h1{
   font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;
@@ -460,10 +490,15 @@ body.board.projector #projectorScoreboard{display:flex}
 }
 .modal-card .tag{font-size:10px;letter-spacing:4px;color:var(--ink-dim);text-transform:uppercase;text-align:center;margin-bottom:20px}
 .modal-card h2{
-  font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold-soft);
-  margin:18px 0 10px;letter-spacing:.5px;
+  font-family:'Cormorant Garamond',serif;font-size:16px;color:rgba(217,180,106,0.65);
+  margin:16px 0 8px;letter-spacing:2px;text-transform:uppercase;font-weight:500;
+  display:flex;align-items:center;gap:8px;
 }
+.modal-card h2::before{content:'';flex:1;height:1px;background:rgba(217,180,106,0.15)}
+.modal-card h2::after {content:'';flex:1;height:1px;background:rgba(217,180,106,0.15)}
 .modal-card p{color:var(--ink-dim);font-size:13px;margin-bottom:14px;line-height:1.6}
+#startModal .btn.primary{margin:4px 24px 8px;width:calc(100% - 48px)}
+#startModal > .modal-card > [style*="text-align:center"]{padding:0 24px 16px}
 
 .modal-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .mode-card{
@@ -791,11 +826,24 @@ body.remote .toast-item{
 
 /* Hex production highlight */
 .hex-produce{
-  animation:hexProduce 1.4s ease-out;
+  animation:hexProduce 1.6s ease-out forwards;
 }
 @keyframes hexProduce{
-  0%,100%{filter:none}
-  50%{filter:brightness(1.6) drop-shadow(0 0 20px rgba(255,240,200,0.9))}
+  0%  {filter:none}
+  18% {filter:brightness(2.2) drop-shadow(0 0 28px rgba(255,240,180,1)) saturate(1.8)}
+  55% {filter:brightness(1.5) drop-shadow(0 0 14px rgba(255,240,180,0.6))}
+  100%{filter:none}
+}
+/* Floating resource particle */
+.hex-res-particle{
+  position:fixed;pointer-events:none;z-index:920;
+  font-size:22px;line-height:1;
+  animation:resFloat 1.1s cubic-bezier(.2,.8,.4,1) forwards;
+}
+@keyframes resFloat{
+  0%  {opacity:1;transform:translateY(0) scale(1)}
+  60% {opacity:1;transform:translateY(-52px) scale(1.15)}
+  100%{opacity:0;transform:translateY(-80px) scale(0.7)}
 }
 
 /* ===========================================================
@@ -1142,7 +1190,7 @@ body.remote .toast-item{
 /* ========== ROBBER ANIMATIONS ========== */
 @keyframes robberFloat{
   0%,100%{transform:translateY(0px)}
-  50%{transform:translateY(-5px)}
+  50%{transform:translateY(-6px)}
 }
 @keyframes robberPulse{
   0%,100%{opacity:.55}
@@ -1156,12 +1204,44 @@ body.remote .toast-item{
 .robber-aura{animation:robberPulse 1.8s ease-in-out infinite}
 .robber-ring-anim{animation:robberRing 3.5s linear infinite}
 
+/* Warp portal SVG animations (used via style attr) */
+@keyframes warpRing{
+  from{r:4;opacity:1;stroke-width:5}
+  to{r:32;opacity:0;stroke-width:1}
+}
+@keyframes warpFill{
+  from{r:3;opacity:.9}
+  to{r:24;opacity:0}
+}
+@keyframes warpCore{
+  from{r:12;opacity:1}
+  to{r:0;opacity:0}
+}
+
 /* ========== VP BAR NEAR WIN ========== */
 @keyframes vpBarWin{
   0%,100%{box-shadow:none}
   50%{box-shadow:0 0 8px currentColor}
 }
 .vp-bar-fill.near-win{animation:vpBarWin 1.2s ease-in-out infinite}
+
+/* ========== TURN CHANGE BANNER ========== */
+#turnChangeBanner{
+  position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-120%);
+  z-index:950;pointer-events:none;
+  display:flex;align-items:center;gap:14px;
+  padding:13px 28px 13px 18px;
+  border-radius:0 0 18px 18px;
+  backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,0.08);border-top:none;
+  box-shadow:0 8px 30px rgba(0,0,0,0.6);
+  transition:transform .38s cubic-bezier(.2,1.4,.4,1);
+}
+#turnChangeBanner.show{transform:translateX(-50%) translateY(0)}
+#turnChangeBanner.hide{transform:translateX(-50%) translateY(-130%);transition:transform .28s ease-in}
+#tcbAvatar{flex:0 0 36px}
+#tcbName{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;line-height:1.1}
+#tcbSub{font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.55;margin-top:2px;font-family:'JetBrains Mono',monospace}
 
 /* ========== BOT THINKING ========== */
 @keyframes thinkDot{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
@@ -1231,15 +1311,19 @@ body.remote .toast-item{
 ============================================================ -->
 <div id="startModal" class="modal board-only">
   <div class="modal-card">
-    <h1>Colonos</h1>
-    <div class="tag">Edición Jugable · Mesa Digital</div>
+
+    <!-- Hero header -->
+    <div class="start-hero">
+      <div class="start-hero-title">Colonos</div>
+      <div class="start-hero-sub">Conquista el Cosmos · Mesa Digital</div>
+    </div>
 
     <!-- Continue saved game (shown only if localStorage has a valid save) -->
-    <button id="btnContinueGame" class="hidden">
+    <button id="btnContinueGame" class="hidden" style="margin:12px 24px 0;width:calc(100% - 48px)">
       🚀 Continuar partida guardada
     </button>
 
-    <h2>1. Modo de Juego</h2>
+    <h2 style="margin-top:20px">Modo</h2>
     <div class="modal-modes">
       <div class="mode-card selected" data-mode="base">
         <div class="mc-tag">Clásico</div>
@@ -1253,7 +1337,7 @@ body.remote .toast-item{
       </div>
     </div>
 
-    <h2>2. Jugadores</h2>
+    <h2>Jugadores</h2>
     <p style="margin-bottom:10px">Mínimo 3 jugadores. Cada uno puede conectar su celular como control remoto privado.</p>
     <div class="player-setup-list" id="playerSetup"></div>
     <div style="display:flex;gap:6px;margin-top:4px">
@@ -1271,7 +1355,7 @@ body.remote .toast-item{
       </div>
     </div>
 
-    <h2>3. Tipo de Partida</h2>
+    <h2>Tipo de Partida</h2>
     <div class="modal-modes">
       <div class="mode-card selected" data-gametype="full">
         <div class="mc-tag">Completa</div>
@@ -1285,7 +1369,7 @@ body.remote .toast-item{
       </div>
     </div>
 
-    <h2>4. Puntos de Victoria</h2>
+    <h2>Puntos de Victoria</h2>
     <div class="vp-selector" id="vpSelector">
       <button class="vp-btn" data-vp="8">
         <div class="vp-n">8</div>
@@ -1301,9 +1385,9 @@ body.remote .toast-item{
       </button>
     </div>
 
-    <button class="btn primary btn-block" id="btnStartGame">Empezar Partida</button>
-    <div style="text-align:center;margin-top:10px">
-      <button class="btn" id="btnOnlyBoard" style="font-size:11px">Modo Demo · Solo Tablero (sin jugadores)</button>
+    <div style="padding:8px 24px 20px;display:flex;flex-direction:column;gap:8px">
+      <button class="btn primary btn-block" id="btnStartGame" style="font-size:15px;padding:15px;letter-spacing:.5px">🚀 Empezar Partida</button>
+      <button class="btn btn-block" id="btnOnlyBoard" style="font-size:11px;opacity:.55">Modo Demo · Solo Tablero (sin jugadores)</button>
     </div>
   </div>
 </div>
@@ -2514,8 +2598,10 @@ function distributeResources(diceTotal){
         if(ct){gains[p.id] = gains[p.id]||{}; gains[p.id][res] = (gains[p.id][res]||0)+2; p.resources[res]+=2;}
       });
     }
-    // Highlight visual
-    highlightHexProduction(hex);
+    // Total produced this hex
+    const hexTotal = Object.values(gains).reduce((sum, g)=>sum+(g[res]||0), 0);
+    // Highlight visual + particles
+    highlightHexProduction(hex, hexTotal || 1);
   });
   // Log + SFX if anyone received resources
   if(Object.keys(gains).length > 0) AudioEngine.sfx.collect();
@@ -2532,13 +2618,52 @@ function distributeResources(diceTotal){
   });
 }
 
-function highlightHexProduction(hex){
+function highlightHexProduction(hex, gainQty){
+  // Flash the hex paths
   const els = document.querySelectorAll(`#board [data-q="${hex.q}"][data-r="${hex.r}"]`);
   els.forEach(el=>{
     el.classList.remove('hex-produce');
     void el.offsetWidth;
     el.classList.add('hex-produce');
   });
+
+  // Floating resource emoji particle from hex center
+  const board = document.getElementById('board');
+  if(!board) return;
+  const boardRect = board.getBoundingClientRect();
+  const svgEl = board.querySelector('svg') || board;
+  const viewBox = svgEl.viewBox?.baseVal || {x:-500,y:-500,width:1000,height:1000};
+  const p = hexToPixel(hex.q, hex.r, STATE.size);
+  // Convert SVG coords → screen coords
+  const gBoard = document.getElementById('gBoard');
+  let ox=0, oy=0;
+  if(gBoard){
+    const t = gBoard.getAttribute('transform')||'';
+    const m = t.match(/translate\(([^,]+),([^)]+)\)/);
+    if(m){ ox=parseFloat(m[1])||0; oy=parseFloat(m[2])||0; }
+  }
+  const svgX = p.x + ox;
+  const svgY = p.y + oy;
+  const scaleX = boardRect.width  / viewBox.width;
+  const scaleY = boardRect.height / viewBox.height;
+  const screenX = boardRect.left + (svgX - viewBox.x) * scaleX;
+  const screenY = boardRect.top  + (svgY - viewBox.y) * scaleY;
+
+  const res = TERRAIN_INFO[hex.terrain]?.resource;
+  const emoji = res ? (RESOURCE_INFO[res]?.emoji || '✦') : '✦';
+  const qty = gainQty || 1;
+  for(let i=0;i<Math.min(qty,3);i++){
+    setTimeout(()=>{
+      const sp = document.createElement('div');
+      sp.className = 'hex-res-particle';
+      sp.textContent = emoji;
+      const jitter = (Math.random()-0.5)*30;
+      sp.style.left = (screenX + jitter - 11) + 'px';
+      sp.style.top  = (screenY - 10) + 'px';
+      document.body.appendChild(sp);
+      setTimeout(()=>sp.remove(), 1200);
+    }, i * 120);
+  }
 }
 
 /* =============== MÓDULO 9: ACCIONES ================ */
@@ -2794,7 +2919,9 @@ function endTurn(){
   STATE.lastRoll = null;
   STATE.pendingAction = null;
   AudioEngine.sfx.turn();
-  logEvent(`Turno de ${STATE.players[STATE.currentPlayerIdx].name}`, STATE.players[STATE.currentPlayerIdx].color);
+  const nextP = STATE.players[STATE.currentPlayerIdx];
+  logEvent(`Turno de ${nextP.name}`, nextP.color);
+  showTurnBanner(nextP);
   renderAll();
   broadcastState();
   checkVictory();
@@ -3109,46 +3236,50 @@ function moveRobber(targetHexKey, playerId){
   if(STATE.phase!=='robber') return;
   if(STATE.players[STATE.currentPlayerIdx].id !== playerId) return toast('No es tu turno', true);
   if(targetHexKey === STATE.robberHex) return toast('Mueve al Space Pirate a otra casilla', true);
-  STATE.robberHex = targetHexKey;
+
+  const oldKey = STATE.robberHex;
   logEvent(`${STATE.players[STATE.currentPlayerIdx].name} mueve al Space Pirate 👾`, STATE.players[STATE.currentPlayerIdx].color);
 
-  // Identificar víctimas
-  const [tq, tr] = targetHexKey.split(',').map(Number);
-  const hex = STATE.hexes.find(h=>h.q===tq && h.r===tr);
-  if(hex){
-    const vp = hexToPixel(hex.q, hex.r, STATE.size);
-    const victimsSet = new Set();
-    for(let i=0;i<6;i++){
-      const c = hexCorner(vp.x, vp.y, STATE.size, i);
-      const vKey = Math.round(c.x*100)+","+Math.round(c.y*100);
-      STATE.players.forEach(p=>{
-        if(p.id===playerId) return;
-        const has = p.settlements.some(s=>s.vertex===vKey) || p.cities.some(c=>c.vertex===vKey);
-        const hasCards = Object.values(p.resources).reduce((a,b)=>a+b,0)>0;
-        if(has && hasCards) victimsSet.add(p.id);
-      });
-    }
-    const victims = Array.from(victimsSet);
-    if(victims.length === 1){
-      // Solo una víctima → robar automáticamente
-      stealFrom(playerId, victims[0]);
-      return; // stealFrom llama a renderAll/broadcastState
-    } else if(victims.length > 1){
-      // Múltiples víctimas → el jugador elige
-      STATE.robberVictims = victims;
-      STATE.phase = STATE.pendingAction?.returnPhase || 'main';
-      STATE.pendingAction = {type:'steal-victim', playerId, returnPhase: STATE.pendingAction?.returnPhase||'main'};
-      renderAll();
-      broadcastState();
-      return;
-    }
-  }
+  // Warp animation: portal out at old hex, portal in at new hex
+  animateRobberWarp(oldKey, targetHexKey, ()=>{
+    STATE.robberHex = targetHexKey;
 
-  STATE.robberVictims = [];
-  STATE.phase = STATE.pendingAction?.returnPhase || 'main';
-  STATE.pendingAction = null;
-  renderAll();
-  broadcastState();
+    // Identificar víctimas
+    const [tq, tr] = targetHexKey.split(',').map(Number);
+    const hex = STATE.hexes.find(h=>h.q===tq && h.r===tr);
+    if(hex){
+      const vp = hexToPixel(hex.q, hex.r, STATE.size);
+      const victimsSet = new Set();
+      for(let i=0;i<6;i++){
+        const c = hexCorner(vp.x, vp.y, STATE.size, i);
+        const vKey = Math.round(c.x*100)+","+Math.round(c.y*100);
+        STATE.players.forEach(p=>{
+          if(p.id===playerId) return;
+          const has = p.settlements.some(s=>s.vertex===vKey) || p.cities.some(c=>c.vertex===vKey);
+          const hasCards = Object.values(p.resources).reduce((a,b)=>a+b,0)>0;
+          if(has && hasCards) victimsSet.add(p.id);
+        });
+      }
+      const victims = Array.from(victimsSet);
+      if(victims.length === 1){
+        stealFrom(playerId, victims[0]);
+        return;
+      } else if(victims.length > 1){
+        STATE.robberVictims = victims;
+        STATE.phase = STATE.pendingAction?.returnPhase || 'main';
+        STATE.pendingAction = {type:'steal-victim', playerId, returnPhase: STATE.pendingAction?.returnPhase||'main'};
+        renderAll();
+        broadcastState();
+        return;
+      }
+    }
+
+    STATE.robberVictims = [];
+    STATE.phase = STATE.pendingAction?.returnPhase || 'main';
+    STATE.pendingAction = null;
+    renderAll();
+    broadcastState();
+  }); // end animateRobberWarp
 }
 
 function stealFrom(robberId, victimId){
@@ -3860,11 +3991,15 @@ function renderRobber(parent){
   if(!STATE.robberHex) return;
   const [q,r] = STATE.robberHex.split(',').map(Number);
   const p = hexToPixel(q, r, STATE.size);
+  // Outer g: pure positioning (no CSS animation — avoids SVG transform conflict)
   const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-  g.setAttribute('class','robber-marker');
   g.setAttribute('transform', `translate(${p.x-20},${p.y-38})`);
   g.style.pointerEvents = 'none';
-  g.innerHTML = `
+  // Inner g: CSS float animation (no SVG transform attribute here)
+  const inner = document.createElementNS('http://www.w3.org/2000/svg','g');
+  inner.setAttribute('class','robber-marker');
+  g.appendChild(inner);
+  inner.innerHTML = `
     <!-- Void portal disc on ground -->
     <ellipse cx="20" cy="66" rx="22" ry="5.5" fill="rgba(100,0,200,0.22)" />
     <ellipse cx="20" cy="66" rx="18" ry="4" fill="none" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5 3" class="robber-ring-anim"/>
@@ -3928,6 +4063,37 @@ function renderRobber(parent){
     <circle cx="31" cy="22" r="1.5" fill="rgba(200,100,255,0.7)"/>
   `;
   parent.appendChild(g);
+}
+
+function animateRobberWarp(fromKey, toKey, callback){
+  const board = document.getElementById('board');
+  if(!board || !fromKey){ callback(); return; }
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const gBoard = board.querySelector('#gBoard') || board.querySelector('g');
+
+  function spawnPortal(hexKey, closing){
+    const [q,r] = hexKey.split(',').map(Number);
+    const p = hexToPixel(q, r, STATE.size);
+    const portal = document.createElementNS(svgNS,'g');
+    portal.setAttribute('transform',`translate(${p.x},${p.y})`);
+    portal.style.pointerEvents='none';
+    portal.innerHTML = `
+      <circle r="28" fill="none" stroke="#7c3aed" stroke-width="3" opacity="0.9" style="animation:warpRing 0.45s ease-${closing?'in':'out'} forwards"/>
+      <circle r="18" fill="rgba(100,0,200,0.35)" style="animation:warpFill 0.45s ease-${closing?'in':'out'} forwards"/>
+      <circle r="10" fill="rgba(180,80,255,0.55)" style="animation:warpCore 0.45s ease-${closing?'in':'out'} forwards"/>
+    `;
+    gBoard.appendChild(portal);
+    setTimeout(()=>portal.remove(), 500);
+  }
+
+  // Warp OUT at old position
+  spawnPortal(fromKey, true);
+  // Warp IN at new position after brief delay
+  setTimeout(()=>{
+    spawnPortal(toKey, false);
+    setTimeout(callback, 260);
+  }, 220);
 }
 
 function makeNumberToken(cx, cy, num){
@@ -4848,6 +5014,28 @@ function renderBoardDevCards(){
       list.appendChild(row);
     });
   }
+}
+
+let _turnBannerTimer = null;
+function showTurnBanner(player){
+  if(STATE.appMode !== 'board') return;
+  const banner = document.getElementById('turnChangeBanner');
+  if(!banner || !player) return;
+  const hex = (PLAYER_COLORS[player.color]||{}).hex || '#d9b46a';
+  banner.style.background = `linear-gradient(135deg, ${hex}22, rgba(8,12,24,0.94))`;
+  banner.style.borderColor = `${hex}33`;
+  document.getElementById('tcbAvatar').innerHTML = astronautSVG(hex, 36);
+  document.getElementById('tcbName').textContent = player.name;
+  document.getElementById('tcbName').style.color = hex;
+  document.getElementById('tcbSub').textContent = player.isBot ? '🤖 Turno del Bot' : '¡Tu turno!';
+
+  banner.classList.remove('hide');
+  banner.classList.add('show');
+  clearTimeout(_turnBannerTimer);
+  _turnBannerTimer = setTimeout(()=>{
+    banner.classList.remove('show');
+    banner.classList.add('hide');
+  }, 1800);
 }
 
 function renderTurnBanner(){
@@ -10179,5 +10367,14 @@ function init(){
 
 window.addEventListener('DOMContentLoaded', init);
 </script>
+
+<!-- ── Turn Change Banner — direct body child so position:fixed is viewport-relative ── -->
+<div id="turnChangeBanner">
+  <div id="tcbAvatar"></div>
+  <div>
+    <div id="tcbName">—</div>
+    <div id="tcbSub">Turno</div>
+  </div>
+</div>
 </body>
 </html>
