@@ -1168,13 +1168,8 @@ body.remote .toast-item{
 .winner-stats{margin:0 0 14px;border-radius:10px;overflow:hidden;
   border:1px solid rgba(255,255,255,0.06);
   background:rgba(8,12,24,0.6);
+  padding:4px 0;
 }
-.winner-stat{padding:14px 8px;text-align:center}
-.winner-stat-n{
-  font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:5px;
-  text-shadow:0 0 16px currentColor;
-}
-.winner-stat-l{font-size:10px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.6px}
 .btn-rematch{
   background:linear-gradient(135deg,rgba(217,180,106,.2),rgba(217,180,106,.06));
   border:1px solid rgba(217,180,106,.5);color:var(--gold);font-size:15px;font-weight:700;
@@ -1304,6 +1299,73 @@ body.remote .toast-item{
 }
 #btnContinueGame:hover{background:rgba(217,180,106,0.2);border-color:var(--gold)}
 #btnContinueGame.hidden{display:none!important}
+
+/* ========== ACHIEVEMENT BADGES (Ruta Larga / Mayor Ejército) ========== */
+.achievement-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;
+  font-family:'JetBrains Mono',monospace;letter-spacing:.3px;
+  animation:badgePop .38s cubic-bezier(.2,1.5,.4,1) both;
+}
+.achievement-badge.lr{
+  background:rgba(90,200,220,0.12);border:1px solid rgba(90,200,220,0.45);
+  color:rgba(90,200,220,0.95);
+}
+.achievement-badge.la{
+  background:rgba(255,165,50,0.12);border:1px solid rgba(255,165,50,0.45);
+  color:rgba(255,165,50,0.95);
+}
+@keyframes badgePop{
+  from{transform:scale(0) translateY(4px);opacity:0}
+  to{transform:scale(1) translateY(0);opacity:1}
+}
+
+/* ========== BUILD POP (nuevos asentamientos / ciudades / carreteras) ========== */
+@keyframes buildPop{
+  0%  {opacity:0;filter:brightness(4) drop-shadow(0 0 14px #fff)}
+  30% {opacity:1;filter:brightness(2) drop-shadow(0 0 8px var(--pc,#d9b46a))}
+  100%{opacity:1;filter:none}
+}
+.build-new{animation:buildPop .6s cubic-bezier(.2,1.4,.4,1) both}
+
+/* ========== RESOURCE COUNTER TICK-UP ========== */
+@keyframes resCountPop{
+  0%  {color:#5ac8e0;transform:scale(1.8) translateY(-3px)}
+  55% {color:#aaeeff}
+  100%{color:inherit;transform:scale(1) translateY(0)}
+}
+.res-count-pop{animation:resCountPop .55s cubic-bezier(.2,1,.4,1) both;display:inline-block}
+
+/* ========== BOTÓN DISPONIBLE (can-afford) ========== */
+@keyframes canAffordPulse{
+  0%,100%{box-shadow:0 0 0 0 transparent}
+  50%{box-shadow:0 0 0 3px rgba(34,197,94,0.22),0 0 14px rgba(34,197,94,0.14)}
+}
+.btn-can-afford{
+  animation:canAffordPulse 1.9s ease-in-out infinite !important;
+  border-color:rgba(34,197,94,0.45)!important;
+}
+
+/* ========== TABLA FULL-STATS PANTALLA VICTORIA ========== */
+#winnerStats .all-stats-wrap{width:100%}
+.all-stats-table{width:100%;border-collapse:collapse;font-size:11px;font-family:'JetBrains Mono',monospace}
+.all-stats-table th{
+  color:var(--ink-dim);font-weight:500;padding:5px 6px;text-align:center;
+  border-bottom:1px solid rgba(255,255,255,0.08);font-size:9px;letter-spacing:.5px;
+  text-transform:uppercase;
+}
+.all-stats-table td{padding:5px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04)}
+.all-stats-table tr:last-child td{border-bottom:none}
+.all-stats-table .cell-best{font-weight:700}
+.all-stats-table .cell-zero{color:rgba(255,255,255,0.2)}
+
+/* ========== TIRA DE REACCIONES CONTROL REMOTO ========== */
+.remote-react-strip{
+  display:flex;gap:4px;justify-content:center;flex-wrap:wrap;
+  padding:8px 12px 12px;border-top:1px solid rgba(255,255,255,0.06);
+  margin-top:2px;
+}
+.remote-react-strip .react-btn{font-size:20px;padding:7px 10px;border-radius:10px}
 </style>
 </head>
 <body class="board">
@@ -2082,6 +2144,18 @@ body.remote .toast-item{
       </div>
     </div>
 
+    <!-- Tira de reacciones emoji (control remoto) -->
+    <div class="remote-react-strip" id="rReactStrip">
+      <button class="react-btn" data-remote-emoji="🎉">🎉</button>
+      <button class="react-btn" data-remote-emoji="👍">👍</button>
+      <button class="react-btn" data-remote-emoji="😤">😤</button>
+      <button class="react-btn" data-remote-emoji="💀">💀</button>
+      <button class="react-btn" data-remote-emoji="🔥">🔥</button>
+      <button class="react-btn" data-remote-emoji="😂">😂</button>
+      <button class="react-btn" data-remote-emoji="🚀">🚀</button>
+      <button class="react-btn" data-remote-emoji="⭐">⭐</button>
+    </div>
+
     <!-- Referencia de costos (desplegable) -->
     <div style="margin:0 12px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden">
       <div id="rCostToggle" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
@@ -2607,8 +2681,11 @@ function distributeResources(diceTotal){
   });
   // Log + SFX if anyone received resources
   if(Object.keys(gains).length > 0) AudioEngine.sfx.collect();
+  // Store gains for res counter tick-up animation
+  _pendingResAnim = gains;
   Object.entries(gains).forEach(([pid, g])=>{
     const p = STATE.players.find(x=>x.id===pid);
+    if(p) p._totalResGained = (p._totalResGained||0) + Object.values(g).reduce((a,b)=>a+b,0);
     const parts = Object.entries(g).map(([k,v])=>`${v} ${RESOURCE_INFO[k].name}`).join(', ');
     logEvent(`${p.name} recibe: ${parts}`, p.color);
     // Flash the player card
@@ -2618,6 +2695,8 @@ function distributeResources(diceTotal){
       setTimeout(()=>{ cards.forEach(c=>c.classList.remove('res-flash')); }, 700);
     }, 150);
   });
+  // Trigger tick-up animation after render
+  setTimeout(()=>{ _pendingResAnim = null; }, 1200);
 }
 
 function highlightHexProduction(hex, gainQty){
@@ -2683,6 +2762,7 @@ function startGame(opts){
     settlements:[], cities:[], roads:[],
     knightsPlayed:0, longestRoad:0,
     _lrBonus:0, _laBonus:0,
+    _sevensRolled:0, _totalResGained:0,
     connected:false, deviceId:null
   }));
   STATE.size = STATE.gameMode==='ext'?HEX_SIZE_EXT:HEX_SIZE_BASE;
@@ -2705,6 +2785,7 @@ function startGame(opts){
 
   STATE.gameStartTime = Date.now();
   STATE.gameDuration = null;
+  _buildSnapshot = {};   // reset so no pop on initial placement
   AudioEngine.startMusic();
   BoardView.reset();
   initStarField();
@@ -2819,6 +2900,9 @@ function rollDice(){
   showDiceOverlay(d1, d2, ()=>{
     showDiceFlash(sum);
     if(sum===7){
+      // Track sevens rolled per player
+      const roller = STATE.players[STATE.currentPlayerIdx];
+      if(roller) roller._sevensRolled = (roller._sevensRolled||0) + 1;
       AudioEngine.sfx.robber();
       logEvent(`🎲 ${d1}+${d2}=${sum} · 👾 ¡Space Pirate!`, '#c0392b');
       STATE.discardQueue={};
@@ -3417,17 +3501,42 @@ function showWinnerPopup(winner, totalVP){
     </div>`;
   }).join('');
 
-  // Stats
+  // Full stats comparison table
   const stats = document.getElementById('winnerStats');
-  stats.innerHTML = [
-    {n:winner.settlements?.length||0, l:'Bases 🛸'},
-    {n:winner.cities?.length||0,      l:'Metrópolis 🌌'},
-    {n:winner.knightsPlayed||0,       l:'Guardianes ⚔'},
-    {n:winner.longestRoad||0,         l:'Corredores 🚀'},
-  ].map(s=>`<div class="winner-stat">
-    <div class="winner-stat-n" style="color:${hex}">${s.n}</div>
-    <div class="winner-stat-l">${s.l}</div>
-  </div>`).join('');
+  const SCOLS = [
+    {key:'bases',    label:'🛸',  title:'Bases',      fn:p=>p.settlements?.length||0},
+    {key:'cities',   label:'🌌',  title:'Metrópolis', fn:p=>p.cities?.length||0},
+    {key:'knights',  label:'🛡',  title:'Guardianes', fn:p=>p.knightsPlayed||0},
+    {key:'road',     label:'🚀',  title:'Ruta',       fn:p=>p.longestRoad||0},
+    {key:'sevens',   label:'🎲7', title:'Sietes',     fn:p=>p._sevensRolled||0},
+    {key:'res',      label:'📦',  title:'Recursos',   fn:p=>p._totalResGained||0},
+  ];
+  const maxes = {};
+  SCOLS.forEach(col=>{ maxes[col.key] = Math.max(1, ...ranked.map(col.fn)); });
+  stats.innerHTML = `<div class="all-stats-wrap">
+    <table class="all-stats-table">
+      <thead><tr>
+        <th style="text-align:left;padding-left:8px">Jugador</th>
+        ${SCOLS.map(c=>`<th title="${c.title}">${c.label}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${ranked.map(p=>{
+          const ph = PLAYER_COLORS[p.color]?.hex||'#888';
+          return `<tr>
+            <td style="text-align:left;padding-left:8px">
+              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${ph};margin-right:5px;vertical-align:middle"></span>
+              <span style="color:${ph};font-weight:600">${p.name}</span>
+            </td>
+            ${SCOLS.map(col=>{
+              const v = col.fn(p);
+              const isBest = v > 0 && v === maxes[col.key] && ranked.filter(x=>col.fn(x)===v).length===1;
+              return `<td class="${v===0?'cell-zero':''}${isBest?' cell-best':''}" style="${isBest?`color:${ph}`:''}">${v}${isBest?'★':''}</td>`;
+            }).join('')}
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
 
   // Duration
   const dur = STATE.gameDuration || (STATE.gameStartTime ? Math.floor((Date.now()-STATE.gameStartTime)/1000) : 0);
@@ -4470,13 +4579,15 @@ function renderBuildings(){
 
   STATE.players.forEach(p=>{
     const color = PLAYER_COLORS[p.color].hex;
+    const prev = _buildSnapshot[p.id] || {roads:0, settlements:0, cities:0};
 
     // Roads
-    p.roads.forEach(r=>{
+    p.roads.forEach((r, idx)=>{
       const e = STATE.edges.get(r.edge);
       if(!e) return;
       const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('class','built-piece road');
+      const isNew = idx >= prev.roads;
+      g.setAttribute('class','built-piece road' + (isNew?' build-new':''));
       // Línea gruesa con borde negro
       const black = document.createElementNS('http://www.w3.org/2000/svg','line');
       black.setAttribute('x1',e.x1);black.setAttribute('y1',e.y1);
@@ -4496,11 +4607,13 @@ function renderBuildings(){
     });
 
     // Settlements
-    p.settlements.forEach(s=>{
+    p.settlements.forEach((s, idx)=>{
       const v = STATE.vertices.get(s.vertex);
       if(!v) return;
       const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('class','built-piece settlement');
+      const isNew = idx >= prev.settlements;
+      g.setAttribute('class','built-piece settlement' + (isNew?' build-new':''));
+      if(isNew) g.style.setProperty('--pc', color);
       g.setAttribute('transform', `translate(${v.x},${v.y})`);
       g.innerHTML = `
         <path d="M0,-14 L13,-2 V14 H-13 V-2 Z" fill="${color}" stroke="#000" stroke-width="2"/>
@@ -4510,11 +4623,13 @@ function renderBuildings(){
     });
 
     // Cities
-    p.cities.forEach(c=>{
+    p.cities.forEach((c, idx)=>{
       const v = STATE.vertices.get(c.vertex);
       if(!v) return;
       const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('class','built-piece city');
+      const isNew = idx >= prev.cities;
+      g.setAttribute('class','built-piece city' + (isNew?' build-new':''));
+      if(isNew) g.style.setProperty('--pc', color);
       g.setAttribute('transform', `translate(${v.x},${v.y})`);
       g.innerHTML = `
         <path d="M-17,15 V-3 L-8,-11 V-3 H4 L14,-11 V8 L20,15 Z" fill="${color}" stroke="#000" stroke-width="2"/>
@@ -4524,6 +4639,13 @@ function renderBuildings(){
       `;
       gBoard.appendChild(g);
     });
+
+    // Update snapshot for next render
+    _buildSnapshot[p.id] = {
+      roads: p.roads.length,
+      settlements: p.settlements.length,
+      cities: p.cities.length
+    };
   });
 }
 
@@ -4722,8 +4844,12 @@ function renderPlayersList(){
     `;
 
     // Header: astronaut avatar, nombre, conexión, PV
+    const badges = [
+      p._lrBonus ? `<span class="achievement-badge lr" title="Corredor Galáctico más largo (+2 VP)">🚀 Ruta Larga</span>` : '',
+      p._laBonus ? `<span class="achievement-badge la" title="Mayor Ejército Guardian (+2 VP)">🛡 Mayor Ejército</span>` : '',
+    ].filter(Boolean).join('');
     const header = `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:${badges?'4px':'6px'}">
         <div style="width:30px;height:30px;flex:0 0 30px;position:relative">
           ${astronautSVG(PLAYER_COLORS[p.color].hex, 30)}
           ${p.connected?'<div style="position:absolute;right:-2px;bottom:-2px;width:8px;height:8px;border-radius:50%;background:var(--green-ok);border:1.5px solid var(--bg-1)"></div>':''}
@@ -4731,6 +4857,7 @@ function renderPlayersList(){
         <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${p.name}${p.isBot?`<span style="font-size:9px;color:rgba(255,255,255,0.35);margin-left:4px">${{easy:'😴',medium:'🤖',hard:'💀'}[p.botDifficulty||'medium']}</span>`:''}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold-soft);font-weight:600">${totalVP}<span style="font-size:9px;color:var(--ink-dim);margin-left:2px">/${STATE.targetVP||10}</span></div>
       </div>
+      ${badges?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">${badges}</div>`:''}
       ${(()=>{
         const target = STATE.targetVP||10;
         const pct = Math.min(100,Math.round((totalVP/target)*100));
@@ -4750,10 +4877,17 @@ function renderPlayersList(){
 
     // En modo tablero: mostrar recursos reales (todos están en la misma pantalla)
     let resBreakdown;
+    const _pGains = (_pendingResAnim && _pendingResAnim[p.id]) || {};
     if(STATE.appMode === 'board'){
       const resChips = Object.entries(p.resources)
         .filter(([,q])=>q>0)
-        .map(([k,q])=>`<span title="${RESOURCE_INFO[k].name}" style="display:inline-flex;align-items:center;gap:2px;background:${RESOURCE_INFO[k].color}33;border:1px solid ${RESOURCE_INFO[k].color}66;border-radius:4px;padding:1px 5px;font-size:10px">${RESOURCE_INFO[k].emoji}<b style="color:var(--ink)">${q}</b></span>`).join('');
+        .map(([k,q])=>{
+          const gained = _pGains[k] > 0;
+          const qEl = gained
+            ? `<b class="res-count-pop" style="color:var(--ink)">${q}</b>`
+            : `<b style="color:var(--ink)">${q}</b>`;
+          return `<span title="${RESOURCE_INFO[k].name}" style="display:inline-flex;align-items:center;gap:2px;background:${RESOURCE_INFO[k].color}33;border:1px solid ${RESOURCE_INFO[k].color}66;border-radius:4px;padding:1px 5px;font-size:10px">${RESOURCE_INFO[k].emoji}${qEl}</span>`;
+        }).join('');
       const devChips = (()=>{
         const dc = {knight:0,vp:0,road:0,plenty:0,monopoly:0};
         const dn = {knight:'🛡',vp:'🏆',road:'🚀',plenty:'⚡',monopoly:'👾'};
@@ -4857,12 +4991,14 @@ function renderBoardActions(){
     bSettle.disabled = !can;
     bSettle.style.opacity = can?'1':'0.4';
     bSettle.style.display = STATE.phase==='main'?'':'none';
+    bSettle.classList.toggle('btn-can-afford', !!can);
   }
   if(bCity){
     const can = isMain && canAfford(me,COSTS.city) && me.settlements.length>0;
     bCity.disabled = !can;
     bCity.style.opacity = can?'1':'0.4';
     bCity.style.display = STATE.phase==='main'?'':'none';
+    bCity.classList.toggle('btn-can-afford', !!can);
   }
   if(bRoad){
     const can = isMain && canAfford(me,COSTS.road) &&
@@ -4870,12 +5006,14 @@ function renderBoardActions(){
     bRoad.disabled = !can;
     bRoad.style.opacity = can?'1':'0.4';
     bRoad.style.display = STATE.phase==='main'?'':'none';
+    bRoad.classList.toggle('btn-can-afford', !!can);
   }
   if(bDev){
     const can = isMain && canAfford(me,COSTS.dev) && STATE.devDeck.length>0;
     bDev.disabled = !can;
     bDev.style.opacity = can?'1':'0.4';
     bDev.style.display = STATE.phase==='main'?'':'none';
+    bDev.classList.toggle('btn-can-afford', !!can);
   }
   if(bTrade){
     bTrade.disabled = !isMain;
@@ -5019,6 +5157,8 @@ function renderBoardDevCards(){
 }
 
 let _turnBannerTimer = null;
+let _pendingResAnim = null;   // gains map set during distributeResources for tick-up animation
+let _buildSnapshot  = {};     // {pid: {roads,settlements,cities}} for build-pop animation
 function showTurnBanner(player){
   if(STATE.appMode !== 'board') return;
   const banner = document.getElementById('turnChangeBanner');
@@ -5295,10 +5435,18 @@ function renderRemote(){
   const canAccept = inTrade && !amProposer && (me.resources[STATE.pendingTrade.want.res]||0) >= STATE.pendingTrade.want.qty;
 
   document.getElementById('rBtnRoll').disabled = !canRoll;
-  document.getElementById('rBtnBuildSettlement').disabled = !canAct || !canAfford(me, COSTS.settlement) || inPlacement || inTrade;
-  document.getElementById('rBtnBuildRoad').disabled = !canAct || !canAfford(me, COSTS.road) || inPlacement || inTrade;
-  document.getElementById('rBtnBuildCity').disabled = !canAct || !canAfford(me, COSTS.city) || me.settlements.length===0 || inPlacement || inTrade;
-  document.getElementById('rBtnBuyDev').disabled = !canAct || !canAfford(me, COSTS.dev) || STATE.devDeck.length===0 || inPlacement || inTrade;
+  const _rCanSettle = !(!canAct || !canAfford(me, COSTS.settlement) || inPlacement || inTrade);
+  const _rCanRoad   = !(!canAct || !canAfford(me, COSTS.road)       || inPlacement || inTrade);
+  const _rCanCity   = !(!canAct || !canAfford(me, COSTS.city) || me.settlements.length===0 || inPlacement || inTrade);
+  const _rCanDev    = !(!canAct || !canAfford(me, COSTS.dev)  || STATE.devDeck.length===0  || inPlacement || inTrade);
+  document.getElementById('rBtnBuildSettlement').disabled = !_rCanSettle;
+  document.getElementById('rBtnBuildRoad').disabled       = !_rCanRoad;
+  document.getElementById('rBtnBuildCity').disabled       = !_rCanCity;
+  document.getElementById('rBtnBuyDev').disabled          = !_rCanDev;
+  document.getElementById('rBtnBuildSettlement').classList.toggle('btn-can-afford', _rCanSettle);
+  document.getElementById('rBtnBuildRoad').classList.toggle('btn-can-afford',       _rCanRoad);
+  document.getElementById('rBtnBuildCity').classList.toggle('btn-can-afford',       _rCanCity);
+  document.getElementById('rBtnBuyDev').classList.toggle('btn-can-afford',          _rCanDev);
   document.getElementById('rBtnTrade').disabled = !canAct || inPlacement || inTrade;
   document.getElementById('rBtnTradePlayer').disabled = !canAct || inPlacement || inTrade;
   document.getElementById('rBtnEndTurn').disabled = !((STATE.phase==='main' && STATE.lastRoll && isMyTurn) || (STATE.phase==='starting' && current && current.id===me.id && STATE.startingPlacedThisTurn?.settlement && STATE.startingPlacedThisTurn?.road));
@@ -6544,6 +6692,9 @@ function handleRemoteAction(action){
     if(STATE.pendingAction?.type==='steal-victim' && STATE.pendingAction.playerId===player.id){
       stealFrom(player.id, action.victimId);
     }
+  } else if(action.type==='emoji-react'){
+    showBoardReaction(action.emoji);
+    if(player) logEvent(`${player.name}: ${action.emoji}`, player.color);
   }
 }
 
@@ -9963,9 +10114,23 @@ function bindBoardEvents(){
   document.getElementById('bBtnTradePlayer').onclick = openPlayerTradeModal;
   document.getElementById('bBtnCancel').onclick = cancelPlacement;
 
-  // Emoji reaction bar
-  document.querySelectorAll('.react-btn').forEach(btn=>{
+  // Emoji reaction bar (board mode — local)
+  document.querySelectorAll('.react-btn:not([data-remote-emoji])').forEach(btn=>{
     btn.addEventListener('click', ()=>showBoardReaction(btn.dataset.emoji));
+  });
+  // Emoji reaction strip (remote mode — sends to board)
+  document.querySelectorAll('[data-remote-emoji]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const emoji = btn.dataset.remoteEmoji;
+      if(STATE.appMode === 'remote'){
+        sendAction({type:'emoji-react', emoji, deviceId:STATE.myDeviceId});
+        // Quick visual feedback on the button
+        btn.style.transform = 'scale(1.5)';
+        setTimeout(()=>{ btn.style.transform = ''; }, 250);
+      } else {
+        showBoardReaction(emoji);
+      }
+    });
   });
 
   // Continue saved game button
