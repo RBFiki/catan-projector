@@ -451,11 +451,12 @@ body.board.projector #projectorScoreboard{display:flex}
 }
 .modal.hidden{display:none}
 .modal-card{
-  width:min(580px, 100%);max-height:calc(100vh - 40px);overflow-y:auto;
+  width:min(580px, 100%);max-height:calc(100vh - 40px);
+  overflow-y:auto;overflow-x:hidden;
   border:1px solid rgba(217,180,106,0.22);border-radius:18px;padding:0;
   background:linear-gradient(175deg, rgba(16,22,36,0.98), rgba(8,12,22,0.99));
   box-shadow:0 40px 100px rgba(0,0,0,0.8), 0 0 80px rgba(217,180,106,0.06), 0 0 0 1px rgba(255,255,255,0.04);
-  touch-action:pan-y;overflow:hidden;
+  touch-action:pan-y;
 }
 /* Start modal hero */
 #startModal .modal-card > *:not(.start-hero){padding-left:24px;padding-right:24px}
@@ -463,6 +464,7 @@ body.board.projector #projectorScoreboard{display:flex}
   text-align:center;padding:36px 28px 24px;position:relative;overflow:hidden;
   background:radial-gradient(ellipse 100% 100% at 50% 0%, rgba(217,180,106,0.12), transparent 70%);
   border-bottom:1px solid rgba(217,180,106,0.1);
+  border-radius:17px 17px 0 0;
 }
 .start-hero::before{
   content:'';position:absolute;top:0;left:15%;right:15%;height:1px;
