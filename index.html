@@ -284,16 +284,39 @@ body.board .remote-only{display:none !important}
 
 /* ---------- LOG DE EVENTOS ---------- */
 .event-log{
-  max-height:180px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;
-  padding:6px 10px;background:var(--bg-1);font-size:11px;
+  max-height:230px;overflow-y:auto;
+  border:1px solid rgba(90,200,220,0.15);border-radius:8px;
+  padding:6px 0;background:rgba(4,10,22,0.82);font-size:11px;
+  box-shadow:inset 0 0 18px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
 }
-.event-log::-webkit-scrollbar{width:4px}
-.event-log::-webkit-scrollbar-thumb{background:rgba(217,180,106,0.25)}
-.event-log .ev{padding:4px 0;border-bottom:1px dashed rgba(217,180,106,0.08);color:var(--ink-dim);display:flex;gap:6px}
+.event-log::-webkit-scrollbar{width:3px}
+.event-log::-webkit-scrollbar-thumb{background:rgba(90,200,220,0.2);border-radius:2px}
+.event-log .ev{
+  padding:5px 10px;border-bottom:1px solid rgba(255,255,255,0.04);
+  color:var(--ink-dim);display:flex;gap:6px;align-items:baseline;
+  transition:background .4s;
+}
+.event-log .ev:first-child{
+  animation:evSlideIn .3s cubic-bezier(.2,1,.4,1) both;
+  background:rgba(90,200,220,0.06);
+}
+@keyframes evSlideIn{
+  from{opacity:0;transform:translateX(-8px);background:rgba(90,200,220,0.14)}
+  to{opacity:1;transform:translateX(0)}
+}
 .event-log .ev:last-child{border-bottom:none}
-.event-log .ev .ts{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-soft);flex:0 0 36px}
+.event-log .ev .ts{
+  font-family:'JetBrains Mono',monospace;font-size:8px;
+  color:rgba(90,200,220,0.4);flex:0 0 32px;padding-top:1px;
+}
 .event-log .ev .who{font-weight:600}
 .event-log .ev.highlight{color:var(--ink)}
+.event-log .ev.ev-roll .ts{color:rgba(217,180,106,0.55)}
+.event-log .ev.ev-build .ts{color:rgba(80,220,120,0.55)}
+.event-log .ev.ev-robber .ts{color:rgba(220,80,60,0.65)}
+.event-log .ev.ev-trade .ts{color:rgba(140,110,240,0.55)}
+.event-log .ev.ev-win .ts{color:rgba(255,215,60,0.85)}
+.event-log .ev.ev-win{color:var(--gold-soft);font-weight:600}
 
 /* ===========================================================
    4. ESCENARIO PRINCIPAL (tablero SVG)
@@ -583,30 +606,54 @@ body.remote{font-size:14px}
 .res-card.empty{opacity:.28;filter:grayscale(0.7)}
 
 /* Cartas de desarrollo — lista de botones grandes en remoto */
-.dev-cards{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.dev-cards{display:flex;flex-direction:column;gap:7px;margin-top:8px}
 .dev-card{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:10px 12px;border-radius:8px;
-  background:var(--bg-1);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:9px 11px 9px 8px;border-radius:10px;
+  background:linear-gradient(135deg,rgba(18,24,44,0.95),rgba(10,14,28,0.98));
+  border:1px solid rgba(80,120,200,0.22);
   color:var(--ink);font-size:13px;text-align:left;
   width:100%;touch-action:manipulation;
-  transition:opacity .15s;
+  transition:opacity .15s, border-color .2s, box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.dev-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(120deg,transparent 30%,rgba(120,180,255,0.04) 50%,transparent 70%);
+  pointer-events:none;
+}
+.dev-card .dc-art{
+  width:32px;height:32px;flex:0 0 32px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.08);
+  position:relative;
 }
 .dev-card .dc-left{display:flex;align-items:center;gap:8px}
+.dev-card .dc-info{display:flex;flex-direction:column;gap:2px}
 .dev-card .dc-qty{
-  font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;
-  color:var(--gold-soft);min-width:22px;text-align:center;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  color:rgba(90,200,220,0.7);letter-spacing:.5px;text-transform:uppercase;
 }
-.dev-card .dc-name{font-size:12px;color:var(--ink)}
-.dev-card.qty-0{opacity:.28;pointer-events:none}
-.dev-card.playable{border-color:rgba(217,180,106,0.5);background:linear-gradient(180deg,rgba(217,180,106,0.08),rgba(217,180,106,0.02));animation:pulse-gold 2.2s ease-in-out infinite}
+.dev-card .dc-name{font-size:12px;color:var(--ink);font-weight:500}
+.dev-card.qty-0{opacity:.25;pointer-events:none;filter:grayscale(0.6)}
+.dev-card.playable{
+  border-color:rgba(217,180,106,0.55);
+  background:linear-gradient(135deg,rgba(40,30,8,0.95),rgba(25,18,4,0.98));
+  box-shadow:0 0 14px rgba(217,180,106,0.12), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation:pulse-gold 2.2s ease-in-out infinite;
+}
+.dev-card.playable .dc-art{border-color:rgba(217,180,106,0.4);background:rgba(217,180,106,0.08)}
 .dev-card .dc-btn{
-  padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;
+  padding:6px 12px;border-radius:7px;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
   background:linear-gradient(180deg,var(--gold),#b8923f);color:#1a140a;border:none;
   touch-action:manipulation;flex-shrink:0;
+  box-shadow:0 3px 8px rgba(217,180,106,0.25);
 }
-.dev-card.new-card{opacity:.45;border-style:dashed}
+.dev-card.new-card{opacity:.4;border-style:dashed;border-color:rgba(90,200,220,0.12)}
 .dev-card.new-card .dc-name{color:var(--ink-dim)}
+.dev-card.new-card .dc-art{opacity:.5}
 
 /* Acciones */
 .r-actions{padding:0 14px 14px}
@@ -909,54 +956,101 @@ body.remote .toast-item{
 #diceRollOverlay{
   position:fixed;inset:0;z-index:850;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(5,8,16,0.75);backdrop-filter:blur(7px);
+  background:rgba(2,4,14,0.82);backdrop-filter:blur(10px);
   animation:dOverIn .18s ease-out both;
 }
 #diceRollOverlay.out{animation:dOverOut .28s ease-in forwards}
-@keyframes dOverIn{from{opacity:0;backdrop-filter:blur(0)}to{opacity:1;backdrop-filter:blur(7px)}}
+@keyframes dOverIn{from{opacity:0;backdrop-filter:blur(0)}to{opacity:1}}
 @keyframes dOverOut{from{opacity:1}to{opacity:0}}
-.dice-roll-stage{display:flex;flex-direction:column;align-items:center;gap:20px}
-.dice-roll-who{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(217,180,106,0.5);
-  opacity:0;transition:opacity .3s}
+.dice-roll-stage{display:flex;flex-direction:column;align-items:center;gap:24px}
+.dice-roll-who{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;letter-spacing:4px;text-transform:uppercase;
+  color:rgba(90,200,220,0.55);opacity:0;transition:opacity .3s;
+}
 .dice-roll-who.show{opacity:1}
-.dice-roll-row{display:flex;align-items:center;gap:18px}
+.dice-roll-row{display:flex;align-items:center;gap:22px}
 .big-die{
-  width:92px;height:92px;border-radius:18px;
-  background:linear-gradient(150deg,#faf2e2 0%,#d8cb9e 100%);
-  box-shadow:0 14px 36px rgba(0,0,0,0.72),0 3px 6px rgba(0,0,0,0.35),
-             inset 0 1px 0 rgba(255,255,255,0.65),inset 0 -4px 0 rgba(0,0,0,0.22);
+  width:96px;height:96px;border-radius:20px;
+  background:linear-gradient(145deg,rgba(8,18,40,0.98) 0%,rgba(4,10,24,1) 100%);
+  border:1.5px solid rgba(90,200,220,0.35);
+  box-shadow:
+    0 0 0 1px rgba(90,200,220,0.08),
+    0 0 28px rgba(90,200,220,0.18),
+    0 18px 40px rgba(0,0,0,0.85),
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    inset 0 -2px 0 rgba(0,0,0,0.4);
   display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
-  padding:15px;gap:5px;
+  padding:14px;gap:5px;
+  position:relative;overflow:hidden;
+}
+/* scan line effect */
+.big-die::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,transparent 3px,
+    rgba(90,200,220,0.025) 3px,rgba(90,200,220,0.025) 4px
+  );
+  border-radius:inherit;
+}
+/* top bevel glow */
+.big-die::before{
+  content:'';position:absolute;top:0;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(90,200,220,0.55),transparent);
+  pointer-events:none;
 }
 .big-die.tumble{animation:dieTumble .11s ease-in-out}
-.big-die.land{animation:dieLand .42s cubic-bezier(.25,2,.35,1) both}
+.big-die.land{animation:dieLand .46s cubic-bezier(.2,1.6,.4,1) both}
 .big-die.seven-die{
-  background:linear-gradient(150deg,#ff7b6e,#c0392b)!important;
-  box-shadow:0 14px 36px rgba(192,57,43,0.65),0 0 50px rgba(255,107,94,0.35),
-             inset 0 1px 0 rgba(255,255,255,0.3),inset 0 -4px 0 rgba(0,0,0,0.25)!important;
+  border-color:rgba(255,80,60,0.6)!important;
+  background:linear-gradient(145deg,rgba(30,6,4,0.98),rgba(18,3,2,1))!important;
+  box-shadow:
+    0 0 0 1px rgba(255,80,60,0.12),
+    0 0 32px rgba(255,80,60,0.28),
+    0 18px 40px rgba(0,0,0,0.85),
+    inset 0 1px 0 rgba(255,255,255,0.05)!important;
 }
-.big-die.seven-die .dp{background:#fff!important}
-.dp{border-radius:50%;background:#2a1a08;width:100%;height:100%;
-  box-shadow:inset 0 1px 2px rgba(0,0,0,0.45),inset 0 -1px 1px rgba(255,255,255,0.08)}
+.big-die.seven-die::before{
+  background:linear-gradient(90deg,transparent,rgba(255,100,80,0.65),transparent)!important;
+}
+.big-die.seven-die .dp{
+  background:radial-gradient(circle at 35% 35%,#ff8c7a,#e03020)!important;
+  box-shadow:0 0 6px rgba(255,80,60,0.7)!important;
+}
+.dp{
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(120,210,240,0.95),rgba(60,150,200,0.9));
+  width:100%;height:100%;
+  box-shadow:0 0 5px rgba(90,200,220,0.65),inset 0 1px 1px rgba(255,255,255,0.35);
+}
 .dp-h{visibility:hidden}
-.dice-roll-plus{font-size:28px;font-weight:300;color:rgba(217,180,106,0.45)}
+.dice-roll-plus{
+  font-size:26px;font-weight:300;
+  color:rgba(90,200,220,0.35);
+  font-family:'JetBrains Mono',monospace;
+}
 .dice-roll-sum{
-  font-family:'Cormorant Garamond',serif;font-weight:700;font-size:80px;line-height:1;
-  color:var(--gold);text-shadow:0 0 50px rgba(217,180,106,0.65);
-  opacity:0;transform:scale(0.4) translateY(10px);
-  transition:opacity .22s,transform .3s cubic-bezier(.25,2,.4,1);
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:80px;line-height:1;
+  color:#5ac8e0;text-shadow:0 0 40px rgba(90,200,220,0.8),0 0 80px rgba(90,200,220,0.4);
+  opacity:0;transform:scale(0.6) translateY(8px);
+  transition:opacity .22s,transform .32s cubic-bezier(.2,1.6,.4,1);
+  letter-spacing:-2px;
 }
 .dice-roll-sum.show{opacity:1;transform:scale(1) translateY(0)}
-.dice-roll-sum.seven-sum{color:#ff6b5e;text-shadow:0 0 50px rgba(255,107,94,0.8)}
+.dice-roll-sum.seven-sum{
+  color:#ff6b5e;
+  text-shadow:0 0 40px rgba(255,107,94,0.9),0 0 80px rgba(255,60,40,0.5);
+}
 @keyframes dieTumble{
-  0%{transform:rotate(-14deg) scale(1.06)}
-  50%{transform:rotate(10deg) scale(0.96)}
-  100%{transform:rotate(-14deg) scale(1.06)}
+  0%{transform:rotate(-16deg) scale(1.08)}
+  50%{transform:rotate(12deg) scale(0.94)}
+  100%{transform:rotate(-16deg) scale(1.08)}
 }
 @keyframes dieLand{
-  0%{transform:scale(1.3) rotate(10deg)}
-  55%{transform:scale(0.86) rotate(-3deg)}
-  78%{transform:scale(1.07) rotate(1deg)}
+  0%{transform:scale(1.28) rotate(12deg)}
+  55%{transform:scale(0.88) rotate(-3deg)}
+  80%{transform:scale(1.06) rotate(0.5deg)}
   100%{transform:scale(1) rotate(0)}
 }
 
@@ -980,29 +1074,94 @@ body.remote .toast-item{
 }
 
 /* ========== WINNER MODAL EPIC ========== */
-#winnerModal .modal-card{max-width:460px!important;padding:0!important;overflow:hidden;border-radius:16px}
-.winner-hero{padding:32px 28px 20px;text-align:center;position:relative;
-  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(217,180,106,.12),transparent 70%)}
-.winner-crown{font-size:44px;line-height:1;margin-bottom:10px}
-.winner-avatar-wrap{display:flex;justify-content:center;margin-bottom:12px}
-.winner-hero h1{font-size:34px;margin:0 0 8px;line-height:1}
+#winnerModal .modal-card{max-width:480px!important;padding:0!important;overflow:hidden;border-radius:18px;
+  border:1px solid rgba(255,215,60,0.18)!important;
+  box-shadow:0 0 0 1px rgba(255,215,60,0.08), 0 30px 80px rgba(0,0,0,0.95)!important;
+}
+@keyframes winnerHeroGlow{
+  0%,100%{opacity:.6} 50%{opacity:1}
+}
+.winner-hero{
+  padding:36px 28px 22px;text-align:center;position:relative;
+  background:radial-gradient(ellipse 100% 80% at 50% -10%,rgba(217,180,106,.18),transparent 70%);
+  border-bottom:1px solid rgba(255,215,60,0.1);
+}
+.winner-hero::before{
+  content:'';position:absolute;top:0;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(217,180,106,0.6),transparent);
+}
+.winner-crown{
+  font-size:48px;line-height:1;margin-bottom:12px;
+  filter:drop-shadow(0 0 12px rgba(255,215,60,0.65));
+  animation:winnerHeroGlow 2s ease-in-out infinite;
+}
+.winner-avatar-wrap{display:flex;justify-content:center;margin-bottom:14px;
+  filter:drop-shadow(0 0 18px var(--winner-color,rgba(217,180,106,0.5)));
+}
+.winner-hero h1{font-size:36px;margin:0 0 10px;line-height:1;letter-spacing:.5px}
 .winner-podium{padding:0 20px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
-.podium-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;margin-bottom:4px;
-  font-size:13px}
-.podium-row.first{background:rgba(217,180,106,.1);border:1px solid rgba(217,180,106,.2)}
-.podium-row:not(.first){background:rgba(255,255,255,.03)}
+.podium-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 14px;border-radius:9px;margin-bottom:5px;font-size:13px;
+  transition:background .2s;
+}
+.podium-row.first{
+  background:linear-gradient(135deg,rgba(217,180,106,.14),rgba(217,180,106,.04));
+  border:1px solid rgba(217,180,106,.28);
+  box-shadow:0 0 16px rgba(217,180,106,.08);
+}
+.podium-row:not(.first){background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.04)}
 .podium-rank{font-size:18px;width:26px;flex-shrink:0}
 .podium-name{flex:1;font-weight:600}
 .podium-vp{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim)}
 .winner-bottom{padding:20px 24px 24px}
-.winner-stats{margin:0 0 12px;border-radius:10px}
-.btn-rematch{background:linear-gradient(135deg,rgba(217,180,106,.18),rgba(217,180,106,.06));
-  border:1px solid rgba(217,180,106,.45);color:var(--gold);font-size:16px;font-weight:600;
-  padding:15px;border-radius:10px;width:100%;cursor:pointer;letter-spacing:.5px;margin-bottom:8px;
-  transition:background .2s}
-.btn-rematch:hover{background:linear-gradient(135deg,rgba(217,180,106,.28),rgba(217,180,106,.12))}
+.winner-stats{margin:0 0 14px;border-radius:10px;overflow:hidden;
+  border:1px solid rgba(255,255,255,0.06);
+  background:rgba(8,12,24,0.6);
+}
+.winner-stat{padding:14px 8px;text-align:center}
+.winner-stat-n{
+  font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:5px;
+  text-shadow:0 0 16px currentColor;
+}
+.winner-stat-l{font-size:10px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.6px}
+.btn-rematch{
+  background:linear-gradient(135deg,rgba(217,180,106,.2),rgba(217,180,106,.06));
+  border:1px solid rgba(217,180,106,.5);color:var(--gold);font-size:15px;font-weight:700;
+  padding:15px;border-radius:11px;width:100%;cursor:pointer;letter-spacing:.5px;margin-bottom:10px;
+  transition:all .2s;
+  box-shadow:0 4px 14px rgba(217,180,106,.1);
+}
+.btn-rematch:hover{
+  background:linear-gradient(135deg,rgba(217,180,106,.3),rgba(217,180,106,.14));
+  box-shadow:0 6px 20px rgba(217,180,106,.2);
+}
 .winner-footer-btns{display:flex;gap:8px}
 .winner-footer-btns .btn{flex:1;font-size:12px}
+
+/* ========== ROBBER ANIMATIONS ========== */
+@keyframes robberFloat{
+  0%,100%{transform:translateY(0px)}
+  50%{transform:translateY(-5px)}
+}
+@keyframes robberPulse{
+  0%,100%{opacity:.55}
+  50%{opacity:1}
+}
+@keyframes robberRing{
+  0%{stroke-dashoffset:0}
+  100%{stroke-dashoffset:-188}
+}
+.robber-marker{animation:robberFloat 2.4s ease-in-out infinite}
+.robber-aura{animation:robberPulse 1.8s ease-in-out infinite}
+.robber-ring-anim{animation:robberRing 3.5s linear infinite}
+
+/* ========== VP BAR NEAR WIN ========== */
+@keyframes vpBarWin{
+  0%,100%{box-shadow:none}
+  50%{box-shadow:0 0 8px currentColor}
+}
+.vp-bar-fill.near-win{animation:vpBarWin 1.2s ease-in-out infinite}
 
 /* ========== BOT THINKING ========== */
 @keyframes thinkDot{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
@@ -3099,10 +3258,13 @@ function showWinnerPopup(winner, totalVP){
   // Hero
   document.getElementById('winnerName').textContent = winner.name;
   document.getElementById('winnerName').style.color = hex;
-  document.getElementById('winnerAvatarWrap').innerHTML = astronautSVG(hex, 72);
+  const avatarWrap = document.getElementById('winnerAvatarWrap');
+  avatarWrap.innerHTML = astronautSVG(hex, 80);
+  avatarWrap.style.cssText += `;filter:drop-shadow(0 0 22px ${hex}88)`;
+  modal.querySelector('.winner-hero').style.cssText += `;background:radial-gradient(ellipse 100% 80% at 50% -10%,${hex}18,transparent 70%)`;
   const tag = document.getElementById('winnerTag');
   tag.textContent = `${totalVP} Puntos de Victoria · ¡CAMPEÓN GALÁCTICO!`;
-  tag.style.cssText += `;background:${hex}22;color:${hex};border-color:${hex}55`;
+  tag.style.cssText += `;background:${hex}22;color:${hex};border-color:${hex}55;font-weight:700;letter-spacing:.5px`;
 
   // Podium — rank all players by VP
   const MEDALS = ['🥇','🥈','🥉','4️⃣'];
@@ -3140,8 +3302,12 @@ function showWinnerPopup(winner, totalVP){
 
   modal.classList.remove('hidden');
   AudioEngine.sfx.win();
-  setTimeout(()=>launchConfetti(hex), 200);
-  setTimeout(()=>launchConfetti(hex), 800);
+  // Epic multi-wave confetti
+  setTimeout(()=>launchConfetti(hex), 100);
+  setTimeout(()=>launchConfetti(hex), 350);
+  setTimeout(()=>launchConfetti(hex), 700);
+  setTimeout(()=>launchConfetti('#d9b46a'), 550);
+  setTimeout(()=>launchConfetti(hex), 1100);
 
   // Rematch — same players, new board
   document.getElementById('btnWinnerRematch').onclick = ()=>{
@@ -3696,26 +3862,70 @@ function renderRobber(parent){
   const p = hexToPixel(q, r, STATE.size);
   const g = document.createElementNS('http://www.w3.org/2000/svg','g');
   g.setAttribute('class','robber-marker');
-  g.setAttribute('transform', `translate(${p.x-15},${p.y-30})`);
+  g.setAttribute('transform', `translate(${p.x-20},${p.y-38})`);
   g.style.pointerEvents = 'none';
   g.innerHTML = `
-    <ellipse cx="15" cy="56" rx="14" ry="3" fill="#000" opacity="0.5"/>
-    <!-- Cuerpo traje espacial Space Pirate -->
-    <ellipse cx="15" cy="28" rx="11" ry="13" fill="#1a0a2e" stroke="#7c3aed" stroke-width="1.5"/>
-    <!-- Visor casco -->
-    <ellipse cx="15" cy="20" rx="9" ry="8" fill="#0a0a1a" stroke="#7c3aed" stroke-width="1.5"/>
-    <ellipse cx="15" cy="20" rx="7" ry="6" fill="rgba(120,0,255,0.25)"/>
-    <!-- Ojos rojos brillantes -->
-    <ellipse cx="11" cy="20" rx="2.5" ry="2" fill="#ff0040"/>
-    <ellipse cx="19" cy="20" rx="2.5" ry="2" fill="#ff0040"/>
-    <ellipse cx="11" cy="20" rx="1.2" ry="1" fill="rgba(255,80,100,0.8)"/>
-    <ellipse cx="19" cy="20" rx="1.2" ry="1" fill="rgba(255,80,100,0.8)"/>
-    <!-- Calavera pirata en el pecho -->
-    <circle cx="15" cy="34" r="4" fill="rgba(255,255,255,0.12)" stroke="rgba(124,58,237,0.6)" stroke-width="0.8"/>
-    <text x="15" y="37" text-anchor="middle" font-size="6" fill="rgba(200,50,50,0.85)">☠</text>
-    <!-- Detalles hombros -->
-    <rect x="3"  y="22" width="5" height="8" rx="2" fill="#2d1060" stroke="#7c3aed" stroke-width="0.8"/>
-    <rect x="22" y="22" width="5" height="8" rx="2" fill="#2d1060" stroke="#7c3aed" stroke-width="0.8"/>
+    <!-- Void portal disc on ground -->
+    <ellipse cx="20" cy="66" rx="22" ry="5.5" fill="rgba(100,0,200,0.22)" />
+    <ellipse cx="20" cy="66" rx="18" ry="4" fill="none" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5 3" class="robber-ring-anim"/>
+    <ellipse cx="20" cy="66" rx="13" ry="2.8" fill="rgba(180,60,255,0.18)" />
+
+    <!-- Outer glow aura -->
+    <ellipse cx="20" cy="32" rx="20" ry="24" fill="none" stroke="rgba(124,58,237,0.22)" stroke-width="12" class="robber-aura"/>
+
+    <!-- Jetpack / backpack -->
+    <rect x="9" y="26" width="7" height="14" rx="3" fill="#1a0840" stroke="#6030c0" stroke-width="1"/>
+    <rect x="10.5" y="32" width="4" height="5" rx="1.5" fill="rgba(200,100,255,0.3)"/>
+    <!-- Exhaust glow -->
+    <ellipse cx="13" cy="41" rx="3" ry="2" fill="rgba(180,80,255,0.45)"/>
+
+    <!-- Body suit -->
+    <path d="M10,42 Q6,50 8,58 L32,58 Q34,50 30,42 Z" fill="#140828" stroke="#6030c0" stroke-width="1.2"/>
+    <!-- Chest plate -->
+    <rect x="13" y="38" width="14" height="12" rx="4" fill="#1c0e40" stroke="#7c3aed" stroke-width="1.2"/>
+    <!-- Skull emblem on chest -->
+    <circle cx="20" cy="43" r="4.5" fill="rgba(80,0,160,0.4)" stroke="rgba(180,80,255,0.5)" stroke-width="0.8"/>
+    <text x="20" y="45.5" text-anchor="middle" font-size="5.5" fill="rgba(240,100,100,0.95)">☠</text>
+
+    <!-- Left shoulder pad -->
+    <path d="M7,30 Q4,28 5,35 Q6,38 10,38 L10,28 Z" fill="#260855" stroke="#7c3aed" stroke-width="1"/>
+    <!-- Right shoulder pad -->
+    <path d="M33,30 Q36,28 35,35 Q34,38 30,38 L30,28 Z" fill="#260855" stroke="#7c3aed" stroke-width="1"/>
+    <!-- Spike on left shoulder -->
+    <line x1="5" y1="30" x2="2" y2="24" stroke="#a060ff" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Spike on right shoulder -->
+    <line x1="35" y1="30" x2="38" y2="24" stroke="#a060ff" stroke-width="1.5" stroke-linecap="round"/>
+
+    <!-- Arms -->
+    <path d="M10,38 Q5,44 7,52" fill="none" stroke="#1c0e40" stroke-width="5" stroke-linecap="round"/>
+    <path d="M10,38 Q5,44 7,52" fill="none" stroke="#6030c0" stroke-width="1" stroke-linecap="round"/>
+    <path d="M30,38 Q35,44 33,52" fill="none" stroke="#1c0e40" stroke-width="5" stroke-linecap="round"/>
+    <path d="M30,38 Q35,44 33,52" fill="none" stroke="#6030c0" stroke-width="1" stroke-linecap="round"/>
+    <!-- Energy weapon in right hand -->
+    <rect x="34" y="49" width="8" height="3.5" rx="1.5" fill="#4010a0" stroke="#a060ff" stroke-width="0.8"/>
+    <circle cx="42" cy="50.8" r="2" fill="rgba(180,100,255,0.8)"/>
+    <line x1="44" y1="50.8" x2="48" y2="50.8" stroke="#c080ff" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+
+    <!-- Helmet -->
+    <ellipse cx="20" cy="22" rx="12" ry="11" fill="#0a0520" stroke="#7c3aed" stroke-width="1.8"/>
+    <!-- Visor dark glass -->
+    <path d="M11,20 Q12,12 20,12 Q28,12 29,20 Q28,26 20,27 Q12,26 11,20 Z"
+      fill="rgba(60,0,120,0.85)" stroke="rgba(180,80,255,0.6)" stroke-width="1"/>
+    <!-- Visor inner reflection -->
+    <path d="M14,17 Q16,14 20,14 Q24,14 25,17" fill="none" stroke="rgba(200,160,255,0.3)" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- Red eyes glow through visor -->
+    <ellipse cx="15.5" cy="21" rx="3.2" ry="2.4" fill="rgba(255,0,50,0.75)"/>
+    <ellipse cx="24.5" cy="21" rx="3.2" ry="2.4" fill="rgba(255,0,50,0.75)"/>
+    <!-- Eye pupils -->
+    <ellipse cx="15.5" cy="21" rx="1.6" ry="1.4" fill="#ff0040"/>
+    <ellipse cx="24.5" cy="21" rx="1.6" ry="1.4" fill="#ff0040"/>
+    <!-- Helmet antenna -->
+    <line x1="20" y1="11" x2="20" y2="5" stroke="#7c3aed" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="20" cy="4" r="2" fill="rgba(255,0,40,0.9)"/>
+    <circle cx="20" cy="4" r="1" fill="#ff0040"/>
+    <!-- Helmet side lights -->
+    <circle cx="9" cy="22" r="1.5" fill="rgba(200,100,255,0.7)"/>
+    <circle cx="31" cy="22" r="1.5" fill="rgba(200,100,255,0.7)"/>
   `;
   parent.appendChild(g);
 }
@@ -4353,9 +4563,21 @@ function renderPlayersList(){
         <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${p.name}${p.isBot?`<span style="font-size:9px;color:rgba(255,255,255,0.35);margin-left:4px">${{easy:'😴',medium:'🤖',hard:'💀'}[p.botDifficulty||'medium']}</span>`:''}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold-soft);font-weight:600">${totalVP}<span style="font-size:9px;color:var(--ink-dim);margin-left:2px">/${STATE.targetVP||10}</span></div>
       </div>
-      <div style="height:3px;background:rgba(255,255,255,0.07);border-radius:2px;margin-bottom:7px;overflow:hidden">
-        <div style="height:100%;width:${Math.min(100,Math.round((totalVP/(STATE.targetVP||10))*100))}%;background:${PLAYER_COLORS[p.color].hex};border-radius:2px;transition:width 0.4s ease"></div>
-      </div>
+      ${(()=>{
+        const target = STATE.targetVP||10;
+        const pct = Math.min(100,Math.round((totalVP/target)*100));
+        const nearWin = totalVP >= target-2;
+        const hex2 = PLAYER_COLORS[p.color].hex;
+        // VP dots (milestone pips)
+        const pips = Array.from({length:target},(_,i)=>{
+          const filled = i < totalVP;
+          return `<div style="flex:1;height:100%;border-radius:1px;background:${filled?hex2:'rgba(255,255,255,0.06)'};
+            ${filled&&nearWin?`box-shadow:0 0 4px ${hex2}88;`:''}
+            transition:background .3s;"></div>`;
+        }).join('');
+        return `<div style="display:flex;gap:1.5px;height:5px;margin-bottom:8px;border-radius:3px;overflow:hidden;
+          ${nearWin?`box-shadow:0 0 8px ${hex2}44;`:''}">${pips}</div>`;
+      })()}
     `;
 
     // En modo tablero: mostrar recursos reales (todos están en la misma pantalla)
@@ -4562,7 +4784,9 @@ function renderBoardDevCards(){
   const canKnight  = !STATE.devCardPlayedThisTurn && !inPlacement && !STATE.pendingTrade
                       && (STATE.phase==='main'||STATE.phase==='rolling');
 
-  const devNames = {knight:'🛡 Guardian', vp:'🏆 Pto Victoria', road:'🚀 2 Corredores', plenty:'⚡ Suministro', monopoly:'👾 Asalto Pirata'};
+  const devEmoji  = {knight:'🛡', vp:'🏆', road:'🚀', plenty:'⚡', monopoly:'👾'};
+  const devNames  = {knight:'Guardian', vp:'Pto. Victoria', road:'2 Corredores', plenty:'Suministro', monopoly:'Asalto Pirata'};
+  const devColors = {knight:'rgba(90,180,255,0.55)',vp:'rgba(255,215,60,0.55)',road:'rgba(80,220,120,0.55)',plenty:'rgba(255,200,60,0.55)',monopoly:'rgba(240,80,80,0.55)'};
 
   // Count playable types
   const counts = {knight:0,vp:0,road:0,plenty:0,monopoly:0};
@@ -4573,8 +4797,12 @@ function renderBoardDevCards(){
   // Show VP cards (not playable, just info)
   if(counts.vp > 0){
     const row = document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:rgba(217,180,106,0.08);border:1px solid rgba(217,180,106,0.2);border-radius:6px';
-    row.innerHTML = `<span style="font-size:12px">${devNames.vp} ×${counts.vp}</span><span style="font-size:10px;color:var(--gold-soft)">Auto +${counts.vp}VP</span>`;
+    row.className = 'dev-card';
+    row.style.borderColor = 'rgba(255,215,60,0.3)';
+    row.innerHTML = `<div class="dc-left">
+      <div class="dc-art" style="background:rgba(255,215,60,0.12);border-color:rgba(255,215,60,0.3);font-size:18px">🏆</div>
+      <div class="dc-info"><span class="dc-qty">×${counts.vp}</span><span class="dc-name">Pto. Victoria</span></div>
+    </div><span style="font-size:10px;color:rgba(255,215,60,0.7);font-family:'JetBrains Mono',monospace">+${counts.vp} VP</span>`;
     list.appendChild(row);
   }
 
@@ -4583,21 +4811,21 @@ function renderBoardDevCards(){
     if(counts[k] === 0) return;
     const canPlay = k === 'knight' ? canKnight : canPlayDev;
     const row = document.createElement('div');
-    row.style.cssText=`display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:var(--bg-1);border:1px solid ${canPlay?'rgba(217,180,106,0.35)':'var(--line)'};border-radius:6px`;
-    const nameEl = document.createElement('span');
-    nameEl.style.cssText='font-size:12px;flex:1';
-    nameEl.textContent = `${devNames[k]} ×${counts[k]}`;
-    row.appendChild(nameEl);
+    row.className = 'dev-card' + (canPlay ? ' playable' : '');
+    row.innerHTML = `<div class="dc-left">
+      <div class="dc-art" style="background:${devColors[k].replace('0.55','0.12')};border-color:${devColors[k].replace('0.55','0.3')};font-size:18px">${devEmoji[k]}</div>
+      <div class="dc-info"><span class="dc-qty">×${counts[k]}</span><span class="dc-name">${devNames[k]}</span></div>
+    </div>`;
     const btn = document.createElement('button');
-    btn.className = 'btn' + (canPlay ? ' primary' : '');
-    btn.style.cssText='font-size:11px;padding:4px 10px';
+    btn.className = 'dc-btn';
     btn.textContent = 'Jugar';
     btn.disabled = !canPlay;
+    btn.style.opacity = canPlay ? '1' : '0';
+    btn.style.pointerEvents = canPlay ? 'auto' : 'none';
     btn.onclick = ()=>{
       if(k==='plenty'||k==='monopoly'){
         openDevCardModal(k);
       } else {
-        // knight and road: play directly
         playDevCard(me.id, k, {});
       }
     };
@@ -4612,8 +4840,11 @@ function renderBoardDevCards(){
     Object.entries(newCounts).forEach(([k,q])=>{
       if(!q) return;
       const row = document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:6px;opacity:0.6';
-      row.innerHTML = `<span style="font-size:12px">${devNames[k]||k} ×${q}</span><span style="font-size:10px;color:var(--ink-dim)">Siguiente turno</span>`;
+      row.className = 'dev-card new-card';
+      row.innerHTML = `<div class="dc-left">
+        <div class="dc-art" style="font-size:18px;opacity:.5">${devEmoji[k]||'📡'}</div>
+        <div class="dc-info"><span class="dc-qty">×${q} nueva${q>1?'s':''}</span><span class="dc-name">${devNames[k]||k}</span></div>
+      </div><span style="font-size:9px;color:var(--ink-dim);letter-spacing:.5px">PRÓX. TURNO</span>`;
       list.appendChild(row);
     });
   }
@@ -4677,6 +4908,15 @@ function updateProbabilityGrid(){
   }
 }
 
+function _evClass(msg){
+  if(/🎲/.test(msg)) return 'ev-roll';
+  if(/👾|Space Pirate|ladrón|saquea|descarta/.test(msg)) return 'ev-robber';
+  if(/🏆|GANA/.test(msg)) return 'ev-win';
+  if(/intercambia|comercia|↔|propone/.test(msg)) return 'ev-trade';
+  if(/construye|traza|Base|Corredor|Metrópolis/.test(msg)) return 'ev-build';
+  return '';
+}
+
 function renderEventLog(){
   const log = document.getElementById('eventLog');
   if(!log) return;
@@ -4685,9 +4925,9 @@ function renderEventLog(){
     log.innerHTML = '<div class="ev"><span class="ts">--:--</span><span>Esperando inicio</span></div>';
     return;
   }
-  STATE.log.slice(0,40).forEach(e=>{
+  STATE.log.slice(0,50).forEach(e=>{
     const div = document.createElement('div');
-    div.className = 'ev';
+    div.className = 'ev ' + _evClass(e.msg);
     div.innerHTML = `<span class="ts">${fmtTime(e.t)}</span><span style="color:${e.color||''}">${e.msg}</span>`;
     log.appendChild(div);
   });
@@ -4784,15 +5024,25 @@ function renderRemote(){
   const newCounts = {knight:0, vp:0, road:0, plenty:0, monopoly:0};
   (me.devCardsBoughtThisTurn||[]).forEach(c=>{ if(newCounts[c]!==undefined) newCounts[c]++; });
   dev.innerHTML = '';
-  const devEmoji = {knight:'🛡', vp:'🏆', road:'🚀', plenty:'⚡', monopoly:'👾'};
-  const devNames = {knight:'Guardian', vp:'Pto. Victoria', road:'2 Corredores', plenty:'Suministro', monopoly:'Asalto Pirata'};
+  const devEmoji  = {knight:'🛡', vp:'🏆', road:'🚀', plenty:'⚡', monopoly:'👾'};
+  const devNames  = {knight:'Guardian', vp:'Pto. Victoria', road:'2 Corredores', plenty:'Suministro', monopoly:'Asalto Pirata'};
+  const devColors = {knight:'rgba(90,180,255,0.55)',vp:'rgba(255,215,60,0.55)',road:'rgba(80,220,120,0.55)',plenty:'rgba(255,200,60,0.55)',monopoly:'rgba(240,80,80,0.55)'};
+  const devDesc   = {knight:'Mueve al Pirata',vp:'+1 VP oculto',road:'2 Corredores gratis',plenty:'2 recursos a elegir',monopoly:'Roba un recurso a todos'};
   const canPlayDev = isMyTurn && !STATE.devCardPlayedThisTurn && !inPlacement && !inTrade;
 
   // Mostrar VP como info
   if(devCounts.vp > 0){
     const row = document.createElement('div');
     row.className = 'dev-card';
-    row.innerHTML = `<div class="dc-left"><span class="dc-qty">${devCounts.vp}</span><span class="dc-name">🏆 Pto. Victoria</span></div><span style="font-size:10px;color:var(--gold-soft)">Auto +${devCounts.vp}VP</span>`;
+    row.style.borderColor = 'rgba(255,215,60,0.3)';
+    row.innerHTML = `<div class="dc-left">
+      <div class="dc-art" style="background:rgba(255,215,60,0.12);border-color:rgba(255,215,60,0.3);font-size:18px">🏆</div>
+      <div class="dc-info">
+        <span class="dc-qty">×${devCounts.vp} carta${devCounts.vp>1?'s':''}</span>
+        <span class="dc-name">Pto. Victoria</span>
+      </div>
+    </div>
+    <span style="font-size:10px;color:rgba(255,215,60,0.7);font-family:'JetBrains Mono',monospace">+${devCounts.vp} VP</span>`;
     dev.appendChild(row);
   }
 
@@ -4802,20 +5052,28 @@ function renderRemote(){
     const playable = q > 0 && canPlayDev && (k==='knight'
       ? (STATE.phase==='main'||STATE.phase==='rolling')
       : STATE.phase==='main');
-    if(q === 0 && !playable) return; // no mostrar vacías
+    if(q === 0 && !playable) return;
     const row = document.createElement('div');
     row.className = 'dev-card' + (q===0?' qty-0':'') + (playable?' playable':'');
+    if(playable) row.style.cssText += `;--card-glow:${devColors[k]}`;
     const btn = document.createElement('button');
     btn.className = 'dc-btn';
     btn.textContent = 'Jugar';
     btn.disabled = !playable;
     btn.style.opacity = playable ? '1' : '0';
+    btn.style.pointerEvents = playable ? 'auto' : 'none';
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
       if(k==='plenty'||k==='monopoly') openDevCardModal(k);
       else sendAction({type:'play-dev', cardType:k, deviceId:STATE.myDeviceId, opts:{}});
     });
-    row.innerHTML = `<div class="dc-left"><span class="dc-qty">${q}</span><span class="dc-name">${devEmoji[k]} ${devNames[k]}</span></div>`;
+    row.innerHTML = `<div class="dc-left">
+      <div class="dc-art" style="background:${devColors[k].replace('0.55','0.12')};border-color:${devColors[k].replace('0.55','0.3')};font-size:18px">${devEmoji[k]}</div>
+      <div class="dc-info">
+        <span class="dc-qty">×${q} carta${q>1?'s':''}</span>
+        <span class="dc-name">${devNames[k]}</span>
+      </div>
+    </div>`;
     row.appendChild(btn);
     dev.appendChild(row);
   });
@@ -4826,7 +5084,14 @@ function renderRemote(){
     if(!q) return;
     const row = document.createElement('div');
     row.className = 'dev-card new-card';
-    row.innerHTML = `<div class="dc-left"><span class="dc-qty">${q}</span><span class="dc-name">${devEmoji[k]||'📡'} ${devNames[k]||k}</span></div><span style="font-size:10px;color:var(--ink-dim)">Próximo turno</span>`;
+    row.innerHTML = `<div class="dc-left">
+      <div class="dc-art" style="font-size:18px;opacity:.5">${devEmoji[k]||'📡'}</div>
+      <div class="dc-info">
+        <span class="dc-qty">×${q} nueva${q>1?'s':''}</span>
+        <span class="dc-name">${devNames[k]||k}</span>
+      </div>
+    </div>
+    <span style="font-size:9px;color:var(--ink-dim);letter-spacing:.5px">PRÓX. TURNO</span>`;
     dev.appendChild(row);
   });
 
