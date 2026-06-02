@@ -3798,7 +3798,7 @@ function stopTurnTimer(){
 // ── Undo system ──
 function _saveUndoSnapshot(){
   if(STATE.phase !== 'main') return;
-  _undoSnapshot = JSON.parse(JSON.stringify(buildStateSnapshot()));
+  _undoSnapshot = JSON.parse(JSON.stringify(makeSnapshot()));
   STATE.canUndo = true;
 }
 function undoAction(){
