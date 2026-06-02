@@ -1542,7 +1542,7 @@ body.remote .toast-item{
 #rBoardViewBtn.active{background:rgba(90,200,220,.22);border-color:rgba(90,200,220,.5);color:#5ac8e0}
 /* Stage becomes fullscreen overlay in board-view mode */
 body.remote.r-board-view #stage{position:fixed!important;inset:0!important;z-index:9800!important;display:block!important;background:var(--bg-0)!important;overflow:hidden}
-body.remote.r-board-view #boardWrap{display:grid!important;place-items:center!important;position:absolute!important;inset:0!important}
+body.remote.r-board-view #boardWrap{display:grid!important;place-items:center!important;position:absolute!important;inset:0 0 0 0!important}
 /* Close button (top-right of board view) */
 #rBoardViewClose{display:none;position:fixed;top:max(14px,env(safe-area-inset-top,14px));right:14px;z-index:9902;background:rgba(5,8,16,.88);border:1px solid rgba(217,180,106,.4);border-radius:20px;padding:7px 14px;color:var(--gold-soft);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;backdrop-filter:blur(8px);touch-action:manipulation}
 body.remote.r-board-view #rBoardViewClose{display:flex;align-items:center;gap:5px}
@@ -1552,13 +1552,32 @@ body.remote.r-board-view #rBoardViewHint{display:block}
 
 /* ── Placement spot list (remote) ── */
 #rPlacementSpots{margin:0 12px 8px;display:none;flex-direction:column;gap:5px}
-.r-spot-btn{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.26);cursor:pointer;touch-action:manipulation;text-align:left;width:100%;transition:background .12s;-webkit-tap-highlight-color:transparent}
-.r-spot-btn:active{background:rgba(245,166,35,.18);transform:scale(.98)}
-.r-spot-icon{font-size:16px;flex-shrink:0;line-height:1}
+/* When board view is open: pin spot list as a slide-up panel over the board */
+body.remote.r-board-view #rPlacementSpots{
+  position:fixed;bottom:0;left:0;right:0;z-index:9903;
+  max-height:44vh;overflow-y:auto;
+  background:rgba(5,8,16,.97);
+  border-top:1.5px solid rgba(245,166,35,.45);
+  border-radius:16px 16px 0 0;
+  padding:8px 12px max(16px,env(safe-area-inset-bottom,16px));
+  backdrop-filter:blur(16px);
+  margin:0;
+  /* slide up animation */
+  animation:spotsSlideUp .22s cubic-bezier(.3,1.2,.4,1) both;
+}
+@keyframes spotsSlideUp{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}
+/* Drag handle visual cue */
+body.remote.r-board-view #rPlacementSpots::before{
+  content:'';display:block;width:36px;height:4px;border-radius:2px;
+  background:rgba(255,255,255,.2);margin:0 auto 8px;
+}
+.r-spot-btn{display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:8px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.28);cursor:pointer;touch-action:manipulation;text-align:left;width:100%;transition:background .12s;-webkit-tap-highlight-color:transparent;min-height:46px}
+.r-spot-btn:active{background:rgba(245,166,35,.2);transform:scale(.98)}
+.r-spot-icon{font-size:17px;flex-shrink:0;line-height:1}
 .r-spot-label{flex:1;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink);line-height:1.4}
 .r-spot-score{font-size:9px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;padding:2px 6px;background:rgba(255,255,255,.06);border-radius:5px;white-space:nowrap}
-.r-open-board-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 14px;border-radius:8px;background:rgba(90,200,220,.08);border:1px solid rgba(90,200,220,.28);color:rgba(90,200,220,.9);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;touch-action:manipulation;width:100%;transition:background .12s;-webkit-tap-highlight-color:transparent}
-.r-open-board-btn:active{background:rgba(90,200,220,.18)}
+.r-open-board-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 14px;border-radius:8px;background:rgba(90,200,220,.08);border:1px solid rgba(90,200,220,.28);color:rgba(90,200,220,.9);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;touch-action:manipulation;width:100%;transition:background .12s;-webkit-tap-highlight-color:transparent;min-height:46px}
+.r-open-board-btn:active{background:rgba(90,200,220,.2)}
 .r-spot-section-title{font-size:9px;color:var(--ink-dim);letter-spacing:.5px;text-transform:uppercase;padding:2px 2px 4px;font-family:'JetBrains Mono',monospace}
 </style>
 </head>
@@ -4745,12 +4764,12 @@ function renderInteractiveSpots(){
     g.setAttribute('class','edge-spot');
     g.dataset.id = e.id;
 
-    // Hitbox grande invisible
+    // Hitbox grande invisible — wider on mobile remote for finger tapping
     const hit = document.createElementNS('http://www.w3.org/2000/svg','line');
     hit.setAttribute('x1',e.x1);hit.setAttribute('y1',e.y1);
     hit.setAttribute('x2',e.x2);hit.setAttribute('y2',e.y2);
     hit.setAttribute('stroke','transparent');
-    hit.setAttribute('stroke-width','14');
+    hit.setAttribute('stroke-width', STATE.appMode==='remote' ? '38' : '14');
     hit.setAttribute('stroke-linecap','round');
     g.appendChild(hit);
 
@@ -4786,10 +4805,10 @@ function renderInteractiveSpots(){
     g.setAttribute('class','vertex-spot');
     g.dataset.id = v.id;
 
-    // Hitbox invisible
+    // Hitbox invisible — bigger on mobile remote for finger tapping
     const hit = document.createElementNS('http://www.w3.org/2000/svg','circle');
     hit.setAttribute('cx',v.x);hit.setAttribute('cy',v.y);
-    hit.setAttribute('r','22');
+    hit.setAttribute('r', STATE.appMode==='remote' ? '32' : '22');
     hit.setAttribute('fill','transparent');
     g.appendChild(hit);
 
