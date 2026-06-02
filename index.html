@@ -4765,12 +4765,14 @@ function renderInteractiveSpots(){
     g.dataset.id = e.id;
 
     // Hitbox grande invisible — wider on mobile remote for finger tapping
+    // pointer-events:all ensures it's always tappable regardless of stroke paint
     const hit = document.createElementNS('http://www.w3.org/2000/svg','line');
     hit.setAttribute('x1',e.x1);hit.setAttribute('y1',e.y1);
     hit.setAttribute('x2',e.x2);hit.setAttribute('y2',e.y2);
-    hit.setAttribute('stroke','transparent');
-    hit.setAttribute('stroke-width', STATE.appMode==='remote' ? '38' : '14');
+    hit.setAttribute('stroke','rgba(0,0,0,0)');
+    hit.setAttribute('stroke-width', STATE.appMode==='remote' ? '44' : '14');
     hit.setAttribute('stroke-linecap','round');
+    hit.setAttribute('pointer-events','all');
     g.appendChild(hit);
 
     // Línea visible (solo aparece si es válida)
@@ -4795,6 +4797,18 @@ function renderInteractiveSpots(){
       ev.stopPropagation();
       onEdgeClick(e.id);
     });
+    // touchend fallback: in remote mode on mobile, 'click' can be suppressed
+    // if the browser decides the touch was a scroll. Fire the action on touchend
+    // so a quick tap always registers, regardless of click event delivery.
+    if(STATE.appMode==='remote'){
+      g.addEventListener('touchend', (ev)=>{
+        if(ev.changedTouches.length===1){
+          ev.preventDefault(); // prevent the subsequent synthetic click (avoids double-fire)
+          ev.stopPropagation();
+          onEdgeClick(e.id);
+        }
+      });
+    }
 
     gEdges.appendChild(g);
   });
@@ -4891,6 +4905,7 @@ function setupBoardZoom(){
   svg.addEventListener('touchstart', e=>{ BoardView._touches=Array.from(e.touches); }, {passive:true});
   svg.addEventListener('touchmove', e=>{
     const t=Array.from(e.touches);
+    let didPan = false;
     if(t.length===2 && BoardView._touches?.length===2){
       const d0=Math.hypot(BoardView._touches[0].clientX-BoardView._touches[1].clientX, BoardView._touches[0].clientY-BoardView._touches[1].clientY);
       const d1=Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
@@ -4900,11 +4915,16 @@ function setupBoardZoom(){
         const cx=BoardView.x+(mx-r.left)/r.width*BoardView.w, cy=BoardView.y+(my-r.top)/r.height*BoardView.h;
         BoardView.zoom(d0/d1, cx, cy);
       }
+      didPan = true;
     } else if(t.length===1 && BoardView._touches?.length===1 && !STATE.pendingAction){
       const r=svg.getBoundingClientRect();
       BoardView.pan((t[0].clientX-BoardView._touches[0].clientX)/r.width*BoardView.w, (t[0].clientY-BoardView._touches[0].clientY)/r.height*BoardView.h);
+      didPan = true;
     }
-    BoardView._touches=t; e.preventDefault();
+    BoardView._touches=t;
+    // Only suppress default (and thus the synthetic click) when actually panning/zooming.
+    // When pendingAction is set (placement mode), let the tap fire so onEdgeClick / onVertexClick work.
+    if(didPan) e.preventDefault();
   },{passive:false});
   svg.addEventListener('touchend', ()=>{ BoardView._touches=null; });
 
@@ -6313,9 +6333,24 @@ function renderRemote(){
             const btn = document.createElement('button');
             btn.className = 'r-spot-btn';
             btn.innerHTML = `<span class="r-spot-icon">🚀</span><span class="r-spot-label">${spot.label}</span>`;
-            btn.onclick = ()=>{ haptic(40); onEdgeClick(spot.id); };
+            btn.onclick = ()=>{
+              haptic(40);
+              // Briefly label the button as "Enviando…" so the user knows the tap registered
+              const origHTML = btn.innerHTML;
+              btn.innerHTML = '<span class="r-spot-icon">⏳</span><span class="r-spot-label">Enviando…</span>';
+              btn.disabled = true;
+              setTimeout(()=>{ btn.innerHTML=origHTML; btn.disabled=false; }, 2200);
+              onEdgeClick(spot.id);
+            };
             spotsEl.appendChild(btn);
           });
+        } else {
+          // No valid road spots found — give a clear hint
+          const noSpots = document.createElement('div');
+          noSpots.className = 'r-spot-section-title';
+          noSpots.style.cssText = 'color:rgba(255,160,70,.85);padding:6px 4px;font-size:10px';
+          noSpots.textContent = '🚀 Usa el tablero interactivo para elegir una arista';
+          spotsEl.appendChild(noSpots);
         }
 
       } else if(act.type === 'move-robber'){
@@ -7607,13 +7642,20 @@ function handleSyncMessage(msg){
 }
 
 function sendAction(action){
+  // Send via ALL available channels (mirrors broadcastState) so the message
+  // reaches the board even if one channel (e.g. WS) drops between taps.
   const msg = {type:'action', payload:action};
+  let sent = false;
   if(wsConn && wsConn.readyState===WebSocket.OPEN){
-    wsConn.send(JSON.stringify(msg));
-  } else if(peerRemoteConn && peerRemoteConn.open){
-    try{ peerRemoteConn.send(msg); }catch(e){}
-  } else if(bcastChannel){
-    bcastChannel.postMessage(msg);
+    try{ wsConn.send(JSON.stringify(msg)); sent=true; }catch(e){}
+  }
+  if(peerRemoteConn && peerRemoteConn.open){
+    try{ peerRemoteConn.send(msg); sent=true; }catch(e){}
+  }
+  // BroadcastChannel only works same-device (same-origin tabs); skip on cross-device.
+  // But keep as ultimate fallback when WS/PeerJS are both unavailable.
+  if(!sent && bcastChannel){
+    try{ bcastChannel.postMessage(msg); }catch(e){}
   }
 }
 
@@ -7736,7 +7778,20 @@ function handleRemoteAction(action){
   } else if(action.type==='place-edge'){
     // Remote player chose an edge from the spot list or board view
     const pa = STATE.pendingAction;
-    if(!pa || pa.playerId!==player.id || pa.type!=='place-road') return;
+    if(!pa || pa.playerId!==player.id || pa.type!=='place-road'){
+      // State mismatch — re-sync remote so it sees the correct current state
+      broadcastState();
+      return;
+    }
+    // Pre-validate so we can give the remote user visible error feedback
+    const _isStarting = STATE.phase==='starting';
+    const _startV = _isStarting ? STATE.startingPlacedThisTurn?.lastVertex : null;
+    if(!STATE.edges?.has(action.edgeId) || !isEdgeValidForRoad(action.edgeId, player.id, _isStarting, _startV)){
+      // Invalid edge — tell the phone so the user knows
+      _sendToRemote({type:'action-error', payload:{msg:'Arista inválida, elige otra 🚀'}});
+      broadcastState();
+      return;
+    }
     placeRoad(action.edgeId, player.id);
   } else if(action.type==='place-hex'){
     // Remote player tapped a hex to move the robber
@@ -7773,6 +7828,11 @@ function handleSyncMessageRemote(msg){
     if(msg.payload.deviceId===STATE.myDeviceId){
       _showPlayerSelectUI(msg.payload.options);
     }
+    return;
+  }
+
+  if(msg.type==='action-error' && STATE.appMode==='remote'){
+    toast(msg.payload?.msg || 'Error de acción', true);
     return;
   }
 
