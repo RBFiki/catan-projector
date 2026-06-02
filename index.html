@@ -5547,9 +5547,10 @@ function renderBoardActions(){
   if(!sec) return;
 
   const me = STATE.players[STATE.currentPlayerIdx];
-  // Show only for non-bot, non-remote human players in an active game
-  // (me.deviceId means a phone is controlling this slot — hide panel there)
-  if(!me || me.isBot || me.deviceId || STATE.phase==='lobby' || STATE.phase==='gameover'){
+  // Show for any non-bot human player in an active game.
+  // Even when a phone is connected (me.deviceId), keep PC controls visible so
+  // the host can act manually too — action guards prevent double-execution.
+  if(!me || me.isBot || STATE.phase==='lobby' || STATE.phase==='gameover'){
     sec.style.display='none'; return;
   }
 
@@ -5685,8 +5686,8 @@ function renderBoardDevCards(){
   if(!sec || !list) return;
 
   const me = STATE.players[STATE.currentPlayerIdx];
-  // Only show for non-bot, non-remote players with dev cards
-  if(!me || me.isBot || me.deviceId || STATE.phase==='lobby' || STATE.phase==='gameover'){
+  // Show dev cards for any non-bot human — phone connection doesn't block PC access
+  if(!me || me.isBot || STATE.phase==='lobby' || STATE.phase==='gameover'){
     sec.style.display='none'; return;
   }
 
@@ -6698,7 +6699,7 @@ function renderPendingTradeBoard(){
 
   // Separar elegibles en humanos y bots
   const eligible = STATE.players.filter(p=>p.id!==pt.proposerId && (p.resources[pt.want.res]||0)>=pt.want.qty);
-  const humanEligible = eligible.filter(p=>!p.isBot && !p.deviceId);
+  const humanEligible = eligible.filter(p=>!p.isBot); // remote players can also be accepted for on PC
   const botEligible   = eligible.filter(p=>p.isBot);
   const waiting       = _botTradeTimer !== null; // bots aún decidiendo
 
@@ -6775,8 +6776,9 @@ function renderRobberBoard(){
   } else if(isDiscardPhase){
     sec.style.display = '';
     // Find the first human (non-bot, non-remote) player who still needs to discard
+    // Allow PC to handle discards for any human — remote players can also discard from phone
     const humanEntry = Object.entries(STATE.discardQueue||{})
-      .find(([pid])=>{ const pp=STATE.players.find(x=>x.id===pid); return pp && !pp.isBot && !pp.deviceId; });
+      .find(([pid])=>{ const pp=STATE.players.find(x=>x.id===pid); return pp && !pp.isBot; });
     if(humanEntry){
       const [pid, amt] = humanEntry;
       const p = STATE.players.find(x=>x.id===pid);
@@ -7402,6 +7404,8 @@ function initSyncBoard(){
 function initSyncRemote(code){
   STATE.pairCode = code;
   storageKey = 'catan-sync-' + code;
+  // Persist the pair code so reconnection works even if the URL is lost (iOS reload)
+  try{ localStorage.setItem('catan-last-pair-code', code); }catch(e){}
   // Leer relay URL inyectada en el QR
   const wsParam = new URLSearchParams(location.search).get('ws');
   if(wsParam){ STATE.wsRelayUrl = wsParam; localStorage.setItem('catanWsRelay', wsParam); }
@@ -7431,6 +7435,63 @@ function initSyncRemote(code){
   }, 200);
   initWebSocket(code, 'remote');
   initPeer(code, 'remote');
+
+  // ── Reconnect on app-foreground (tab was backgrounded / app-switched) ──────
+  // Re-announce ourselves immediately when the tab becomes visible again so the
+  // board re-sends the full state without waiting for the WS 3s reconnect loop.
+  if(!_remoteVisibilityHandlerBound){
+    _remoteVisibilityHandlerBound = true;
+    document.addEventListener('visibilitychange', _onRemoteVisibilityChange);
+    window.addEventListener('online', _onRemoteVisibilityChange); // mobile radio wakeup
+  }
+}
+
+let _remoteVisibilityHandlerBound = false;
+function _onRemoteVisibilityChange(){
+  if(STATE.appMode !== 'remote' || document.visibilityState !== 'visible') return;
+  // Update status chip to "reconnecting…" so user sees something
+  const s = document.getElementById('rConnStatus');
+  if(s && !s.textContent.includes('● Conectado')){
+    s.textContent = '🔄 Reconectando...';
+    s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.9);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3)';
+  }
+  // If WS is alive, just re-announce ourselves — the board will re-send state
+  if(wsConn && wsConn.readyState === WebSocket.OPEN){
+    sendAction({type:'remote-hello', deviceId:STATE.myDeviceId});
+    return;
+  }
+  // WS dropped while backgrounded — force an immediate reconnect attempt
+  // (the existing setTimeout(connect,3000) will also fire, but we want faster)
+  const code = STATE.pairCode;
+  if(!code) return;
+  const wsUrl = STATE.wsRelayUrl || localStorage.getItem('catanWsRelay')
+    || new URLSearchParams(location.search).get('ws');
+  if(wsUrl){
+    try{
+      const ws = new WebSocket(wsUrl);
+      ws.onopen = ()=>{
+        wsConn = ws;
+        ws.send(JSON.stringify({type:'join', code}));
+        setTimeout(()=>sendAction({type:'remote-hello', deviceId:STATE.myDeviceId}), 300);
+      };
+      ws.onmessage = (ev)=>{
+        try{ handleSyncMessageRemote(JSON.parse(ev.data)); }catch(e){}
+      };
+      ws.onclose = ()=>{ if(wsConn===ws) wsConn=null; };
+      ws.onerror = ()=>{};
+    }catch(e){}
+  }
+  // Also try PeerJS in case WS is unavailable
+  if(peerRemoteConn && !peerRemoteConn.open && localPeer && !localPeer.destroyed){
+    try{
+      peerRemoteConn = localPeer.connect('catan-' + code);
+      peerRemoteConn.on('open', ()=>{
+        setTimeout(()=>sendAction({type:'remote-hello', deviceId:STATE.myDeviceId}), 250);
+      });
+      peerRemoteConn.on('data', (msg)=>handleSyncMessageRemote(msg));
+      peerRemoteConn.on('error', ()=>{});
+    }catch(e){}
+  }
 }
 
 function initWebSocket(code, role){
@@ -7472,7 +7533,18 @@ function initWebSocket(code, role){
           else handleSyncMessageRemote(msg);
         }catch(e){}
       };
-      ws.onclose = ()=>{ wsConn=null; setTimeout(connect, 3000); };
+      ws.onclose = ()=>{
+        wsConn=null;
+        // Re-connect faster on mobile (1 s instead of 3 s); update status chip on remote
+        if(role==='remote'){
+          const s = document.getElementById('rConnStatus');
+          if(s && s.textContent.includes('● Conectado')){
+            s.textContent = '🔄 Reconectando...';
+            s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.9);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3)';
+          }
+        }
+        setTimeout(connect, 1000);
+      };
       ws.onerror = ()=>{};
     }catch(e){}
   }
@@ -11374,6 +11446,24 @@ function bindBoardEvents(){
   });
 }
 
+// Shared retry loop: keep sending remote-hello until the board assigns us.
+// Called both from the manual code-entry path AND from init() when auto-connecting from URL.
+function _startRemoteHelloRetry(){
+  const s = document.getElementById('rConnStatus');
+  if(s && !s.textContent.includes('● Conectado')){
+    s.textContent = '⏳ Conectando al tablero...';
+    s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.8);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2)';
+  }
+  let retryCount = 0;
+  const retryInterval = setInterval(()=>{
+    if(STATE.myPlayerId){ clearInterval(retryInterval); return; }
+    const sel = document.getElementById('rPlayerSelectPanel');
+    if(sel && sel.style.display !== 'none'){ clearInterval(retryInterval); return; }
+    if(retryCount++ > 20){ clearInterval(retryInterval); return; } // stop after ~60s
+    sendAction({type:'remote-hello', deviceId:STATE.myDeviceId});
+  }, 3000);
+}
+
 function bindRemoteEvents(){
   document.getElementById('btnRemoteConnect').onclick = ()=>{
     const code = document.getElementById('remoteCodeInput').value.replace(/\D/g,'');
@@ -11381,23 +11471,8 @@ function bindRemoteEvents(){
     document.getElementById('remotePairModal').classList.add('hidden');
     initSyncRemote(code);
     wrapRemoteChannel();
-    // Show connecting status
-    const s = document.getElementById('rConnStatus');
-    if(s){
-      s.textContent = '⏳ Conectando al tablero...';
-      s.style.cssText = 'font-size:11px;color:rgba(251,191,36,0.8);padding:2px 8px;border-radius:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2)';
-    }
     document.getElementById('rMeName').textContent = 'Sin asignar';
-    // Retry hello every 3s until assigned or until player-select UI is shown
-    let retryCount = 0;
-    const retryInterval = setInterval(()=>{
-      if(STATE.myPlayerId){ clearInterval(retryInterval); return; }
-      // Si el panel de selección ya es visible, dejar de reintentar
-      const sel = document.getElementById('rPlayerSelectPanel');
-      if(sel && sel.style.display !== 'none'){ clearInterval(retryInterval); return; }
-      if(retryCount++ > 10){ clearInterval(retryInterval); return; } // stop after 30s
-      sendAction({type:'remote-hello', deviceId:STATE.myDeviceId});
-    }, 3000);
+    _startRemoteHelloRetry();
   };
 
   // Cost card toggle (remote)
@@ -11701,11 +11776,18 @@ function init(){
   if(STATE.appMode==='remote'){
     // Modo control remoto (desde QR o link directo)
     bindRemoteEvents();
-    if(remoteCode){
-      document.getElementById('remoteCodeInput').value = remoteCode;
+    // Fall back to localStorage pair code if URL param missing (iOS reload strips params)
+    const effectiveCode = remoteCode || (() => {
+      try{ return localStorage.getItem('catan-last-pair-code') || null; }catch(e){ return null; }
+    })();
+    if(effectiveCode){
+      document.getElementById('remoteCodeInput').value = effectiveCode;
       setTimeout(()=>{
-        initSyncRemote(remoteCode);
+        initSyncRemote(effectiveCode);
         wrapRemoteChannel();
+        // Start a retry-hello loop (same as the manual-entry path) so auto-connect
+        // from URL also retries if the board hasn't responded yet.
+        _startRemoteHelloRetry();
       }, 300);
     } else {
       document.getElementById('remotePairModal').classList.remove('hidden');
