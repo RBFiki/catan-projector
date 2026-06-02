@@ -3248,6 +3248,7 @@ function endTurn(){
   STATE.lastRoll = null;
   STATE.pendingAction = null;
   STATE.turnStartTime = Date.now();
+  startTurnTimer();
   AudioEngine.sfx.turn();
   const nextP = STATE.players[STATE.currentPlayerIdx];
   logEvent(`Turno de ${nextP.name}`, nextP.color);
@@ -3798,8 +3799,10 @@ function stopTurnTimer(){
 // ── Undo system ──
 function _saveUndoSnapshot(){
   if(STATE.phase !== 'main') return;
-  _undoSnapshot = JSON.parse(JSON.stringify(makeSnapshot()));
-  STATE.canUndo = true;
+  try{
+    _undoSnapshot = JSON.parse(JSON.stringify(makeSnapshot()));
+    STATE.canUndo = true;
+  }catch(e){ console.warn('undo snapshot failed', e); }
 }
 function undoAction(){
   if(!_undoSnapshot || STATE.phase !== 'main') return toast('No hay nada que deshacer', true);
@@ -6994,22 +6997,24 @@ function checkBotTurn(){
 
 /* =============== MÓDULO 15: RENDER ALL (orquestador) ================ */
 function renderAll(){
-  if(STATE.appMode==='board'){
-    renderBoard();
-    renderPlayersList();
-    renderTurnBanner();
-    renderBoardActions();
-    renderBoardDevCards();
-    renderRollHistory();
-    renderPendingTradeBoard();
-    renderRobberBoard();
-    renderEventLog();
-    renderProjectorScoreboard();
-  } else {
-    renderBoard();   // El móvil también ve el tablero (versión mini)
-    renderRemote();
-  }
-  // Trigger bot actions after any state change
+  try{
+    if(STATE.appMode==='board'){
+      renderBoard();
+      renderPlayersList();
+      renderTurnBanner();
+      renderBoardActions();
+      renderBoardDevCards();
+      renderRollHistory();
+      renderPendingTradeBoard();
+      renderRobberBoard();
+      renderEventLog();
+      renderProjectorScoreboard();
+    } else {
+      renderBoard();   // El móvil también ve el tablero (versión mini)
+      renderRemote();
+    }
+  }catch(e){ console.error('renderAll error:', e); }
+  // Trigger bot actions after any state change (always runs even if render threw)
   checkBotTurn();
 }
 
