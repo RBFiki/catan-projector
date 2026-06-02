@@ -110,22 +110,22 @@ body.remote #remoteRoot{
   padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 84px);
 }
 
-/* ─── VP pips en cabecera remota ─── */
+/* ─── VP progress bar en cabecera remota ─── */
 .r-vp-pips{
-  display:flex;gap:3px;align-items:center;margin-top:5px;
+  width:100%;height:7px;
+  background:rgba(255,255,255,0.1);
+  border-radius:4px;overflow:hidden;
+  margin-top:7px;
 }
-.r-vp-pip{
-  width:8px;height:8px;border-radius:2px;
-  background:rgba(255,255,255,0.12);
-  transition:background .3s;
-  flex-shrink:0;
+.r-vp-bar-fill{
+  height:100%;border-radius:4px;
+  transition:width .55s cubic-bezier(.4,0,.2,1);
 }
-.r-vp-pip.filled{background:var(--pip-color,#d9b46a);}
-.r-vp-pip.filled.near{
-  box-shadow:0 0 5px var(--pip-color,#d9b46a);
-  animation:pipPulse 1.6s ease-in-out infinite;
+.r-vp-bar-fill.near{
+  animation:vpBarWin 1.2s ease-in-out infinite;
 }
-@keyframes pipPulse{0%,100%{opacity:1}50%{opacity:.55}}
+/* Legacy pip classes — kept for any remaining references */
+.r-vp-pip{display:none}
 
 /* ─── Dados en remoto ─── */
 #rDiceBox{
@@ -842,6 +842,8 @@ body.remote{font-size:14px}
   padding:8px 12px 10px;margin:0 12px 10px;
   background:var(--bg-2);border:1px solid var(--line);border-radius:10px;
 }
+/* Hide others table when no other players yet */
+#rOthersWrap:empty,#rOthersWrap.hidden-empty{display:none}
 .others-list{display:flex;flex-direction:column;gap:4px}
 .other-row{
   display:flex;align-items:center;gap:10px;padding:6px 8px;
@@ -1445,6 +1447,49 @@ body.remote .toast-item{
   animation:canAffordPulse 1.9s ease-in-out infinite !important;
   border-color:rgba(34,197,94,0.45)!important;
 }
+/* Safety: never show affordance glow on disabled buttons (e.g. stale class during state transitions) */
+body.remote .action-btn.btn-can-afford:disabled{
+  animation:none!important;
+  border-color:var(--line)!important;
+  box-shadow:none!important;
+}
+
+/* ========== PANTALLA VICTORIA REMOTA ========== */
+#remoteWinnerBanner{
+  position:fixed;inset:0;z-index:9950;
+  background-color:#050810;
+  background-image:radial-gradient(ellipse at 50% 60%, rgba(14,20,40,1) 0%, rgba(5,8,16,1) 100%);
+  display:flex;flex-direction:column;align-items:center;
+  padding:env(safe-area-inset-top,20px) 24px calc(env(safe-area-inset-bottom,0px)+24px);
+  overflow-y:auto;
+}
+.rwb-trophy{font-size:72px;line-height:1;margin-bottom:8px;animation:rwbTrophy .6s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes rwbTrophy{from{transform:scale(0) rotate(-20deg);opacity:0}to{transform:none;opacity:1}}
+.rwb-winner-name{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;text-align:center;margin-bottom:3px}
+.rwb-winner-sub{font-size:13px;color:rgba(255,255,255,.55);margin-bottom:4px;text-align:center}
+.rwb-dur{font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;font-family:'JetBrains Mono',monospace}
+.rwb-leaderboard{width:100%;max-width:360px;display:flex;flex-direction:column;gap:6px;margin-bottom:24px}
+.rwb-lb-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
+.rwb-lb-row.winner-row{background:rgba(217,180,106,.07);border-color:rgba(217,180,106,.35)}
+.rwb-lb-rank{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-dim);width:18px;text-align:center;flex-shrink:0}
+.rwb-lb-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.rwb-lb-name{flex:1;font-size:14px;font-weight:600}
+.rwb-lb-vp{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--gold-soft);flex-shrink:0}
+.rwb-btn-rematch{
+  width:100%;max-width:360px;padding:16px 24px;border-radius:12px;
+  background:linear-gradient(135deg,rgba(217,180,106,.25),rgba(217,180,106,.1));
+  border:1.5px solid rgba(217,180,106,.6);color:var(--gold-soft);
+  font-size:16px;font-weight:700;font-family:'Cormorant Garamond',serif;
+  cursor:pointer;touch-action:manipulation;margin-bottom:10px;
+  letter-spacing:.5px;min-height:56px;
+  transition:background .15s;
+}
+.rwb-btn-rematch:active{background:rgba(217,180,106,.35)}
+.rwb-btn-close{
+  font-size:12px;color:rgba(255,255,255,.35);
+  padding:10px 20px;cursor:pointer;touch-action:manipulation;
+  font-family:'JetBrains Mono',monospace;
+}
 
 /* ========== TABLA FULL-STATS PANTALLA VICTORIA ========== */
 #winnerStats .all-stats-wrap{width:100%}
@@ -1463,22 +1508,29 @@ body.remote .toast-item{
 .remote-react-strip{
   margin:0 12px 6px;
 }
-.react-toggle-row{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:11px 2px;cursor:pointer;
+/* Quick row: 3 emojis always visible + "más" toggle */
+.react-quick-row{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 2px;
   border-top:1px solid rgba(255,255,255,0.06);
-  touch-action:manipulation;
 }
-.react-toggle-label{font-size:11px;color:var(--ink-dim);letter-spacing:.3px}
-.react-toggle-arrow{
-  font-size:11px;color:var(--ink-dim);transition:transform .2s;display:inline-block;
+.react-quick-label{font-size:10px;color:var(--ink-dim);letter-spacing:.3px;margin-right:2px;white-space:nowrap}
+.react-more-btn{
+  display:flex;align-items:center;gap:2px;
+  padding:6px 9px;min-height:36px;border-radius:10px;
+  font-size:11px;color:var(--ink-dim);cursor:pointer;touch-action:manipulation;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  transition:background .12s;
 }
-.remote-react-strip.open .react-toggle-arrow{transform:rotate(180deg)}
+.react-more-btn:active{background:rgba(255,255,255,.1)}
+.react-more-arrow{transition:transform .2s;display:inline-block}
+.remote-react-strip.open .react-more-arrow{transform:rotate(180deg)}
 .react-inner{
-  display:none;flex-wrap:wrap;gap:4px;padding:6px 0 4px;
+  display:none;flex-wrap:wrap;gap:4px;padding:4px 0 2px;
 }
 .remote-react-strip.open .react-inner{display:flex}
-.remote-react-strip .react-btn{font-size:20px;padding:6px 9px;border-radius:10px}
+.remote-react-strip .react-btn{font-size:22px;padding:6px 9px;min-height:44px;border-radius:10px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.remote-react-strip .react-btn:active{transform:scale(.88)}
 
 /* ── Longest-road glow on SVG roads ── */
 @keyframes lrRoadPulse{0%,100%{opacity:.85}50%{opacity:1}}
@@ -1537,7 +1589,7 @@ body.remote .toast-item{
 
 /* ── Quick bank trade (remote) ── */
 .r-qtrade{display:flex;gap:5px;flex-wrap:wrap;padding:8px 14px 4px;border-top:1px solid rgba(255,255,255,.06);margin-top:4px}
-.r-qtrade-btn{display:flex;align-items:center;gap:3px;padding:5px 10px;border-radius:8px;border:1px solid rgba(217,180,106,.3);background:rgba(217,180,106,.08);font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--gold-soft);touch-action:manipulation;white-space:nowrap}
+.r-qtrade-btn{display:flex;align-items:center;justify-content:center;gap:4px;padding:9px 12px;min-height:44px;border-radius:8px;border:1px solid rgba(217,180,106,.3);background:rgba(217,180,106,.08);font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--gold-soft);touch-action:manipulation;white-space:nowrap}
 .r-qtrade-btn:active{transform:scale(.94)}
 
 /* ── Port mini-list (remote) ── */
@@ -1616,7 +1668,7 @@ body.remote.r-board-view #rPlacementSpots::before{
 .r-spot-icon{font-size:17px;flex-shrink:0;line-height:1}
 .r-spot-label{flex:1;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink);line-height:1.4}
 .r-spot-score{font-size:9px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;padding:2px 6px;background:rgba(255,255,255,.06);border-radius:5px;white-space:nowrap}
-.r-open-board-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 14px;border-radius:8px;background:rgba(90,200,220,.08);border:1px solid rgba(90,200,220,.28);color:rgba(90,200,220,.9);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;touch-action:manipulation;width:100%;transition:background .12s;-webkit-tap-highlight-color:transparent;min-height:46px}
+.r-open-board-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 14px;border-radius:8px;background:rgba(90,200,220,.08);border:1px solid rgba(90,200,220,.28);color:rgba(90,200,220,.9);font-size:13px;font-weight:600;cursor:pointer;touch-action:manipulation;width:100%;transition:background .12s;-webkit-tap-highlight-color:transparent;min-height:46px;letter-spacing:.3px}
 .r-open-board-btn:active{background:rgba(90,200,220,.2)}
 .r-spot-section-title{font-size:9px;color:var(--ink-dim);letter-spacing:.5px;text-transform:uppercase;padding:2px 2px 4px;font-family:'JetBrains Mono',monospace}
 </style>
@@ -2314,11 +2366,22 @@ body.remote.r-board-view #rPlacementSpots::before{
       </div>
     </div>
 
+    <!-- Waiting context hint (shown when it's not my turn) -->
+    <div id="rWaitHint" style="display:none;margin:4px 14px 0;padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--ink-dim);text-align:center;font-family:'JetBrains Mono',monospace;letter-spacing:.3px">
+      ⏳ <span id="rWaitHintText">Esperando turno…</span>
+    </div>
+
     <!-- Dados visuales (aparece tras tirar) -->
     <div id="rDiceBox">
       <div class="r-die" id="rDie1"></div>
       <div class="r-dice-sum" id="rDiceSum">—</div>
       <div class="r-die" id="rDie2"></div>
+    </div>
+
+    <!-- Otros jugadores — aquí arriba para ver sin hacer scroll -->
+    <div class="others-table" id="rOthersWrap" style="display:none">
+      <div class="r-hand-title">Otros Jugadores</div>
+      <div class="others-list" id="rOthers"></div>
     </div>
 
     <div class="r-hand">
@@ -2332,10 +2395,10 @@ body.remote.r-board-view #rPlacementSpots::before{
       <!-- Quick bank trade (updated by renderRemote) -->
       <div class="r-qtrade" id="rQuickTrade" style="display:none"></div>
 
-      <div class="r-hand-title" style="margin-top:16px">
-        Tecnología Espacial
+      <div class="r-hand-title" style="margin-top:16px;display:none" id="rDevTitle">
+        📡 Tecnología Espacial
       </div>
-      <div class="dev-cards" id="rDevCards"></div>
+      <div class="dev-cards" id="rDevCards" style="display:none"></div>
     </div>
 
     <div class="placement-banner" id="rPlacementBanner" style="display:none">
@@ -2426,19 +2489,24 @@ body.remote.r-board-view #rPlacementSpots::before{
 
     <!-- Tira de reacciones emoji (control remoto) -->
     <div class="remote-react-strip" id="rReactStrip">
-      <div class="react-toggle-row" id="rReactToggle">
-        <span class="react-toggle-label">😊 Reaccionar</span>
-        <span class="react-toggle-arrow">▾</span>
-      </div>
-      <div class="react-inner">
+      <!-- Quick row: 3 always-visible + expand toggle -->
+      <div class="react-quick-row">
+        <span class="react-quick-label">Reacción:</span>
         <button class="react-btn" data-remote-emoji="🎉">🎉</button>
         <button class="react-btn" data-remote-emoji="👍">👍</button>
         <button class="react-btn" data-remote-emoji="😤">😤</button>
+        <button class="react-more-btn" id="rReactToggle">
+          ··· <span class="react-more-arrow">▾</span>
+        </button>
+      </div>
+      <div class="react-inner" id="rReactInner">
         <button class="react-btn" data-remote-emoji="💀">💀</button>
         <button class="react-btn" data-remote-emoji="🔥">🔥</button>
         <button class="react-btn" data-remote-emoji="😂">😂</button>
         <button class="react-btn" data-remote-emoji="🚀">🚀</button>
         <button class="react-btn" data-remote-emoji="⭐">⭐</button>
+        <button class="react-btn" data-remote-emoji="🎯">🎯</button>
+        <button class="react-btn" data-remote-emoji="💎">💎</button>
       </div>
     </div>
 
@@ -2529,11 +2597,6 @@ body.remote.r-board-view #rPlacementSpots::before{
     <div id="rDevLogSection" style="display:none;margin:0 12px 8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 10px">
       <div style="font-size:9px;letter-spacing:.6px;color:var(--ink-dim);text-transform:uppercase;margin-bottom:5px">📜 Cartas jugadas</div>
       <div id="rDevLog"></div>
-    </div>
-
-    <div class="others-table">
-      <div class="r-hand-title">Otros Jugadores</div>
-      <div class="others-list" id="rOthers"></div>
     </div>
 
   </div>
@@ -6024,19 +6087,13 @@ function renderRemote(){
   const targetVP = STATE.targetVP || 10;
   if(tgt) tgt.textContent = targetVP;
 
-  // VP pip bar
+  // VP progress bar
   const pipsEl = document.getElementById('rMeVpPips');
   if(pipsEl){
     const colorHex = PLAYER_COLORS[me.color]?.hex || '#d9b46a';
     const nearWin = totalVP >= targetVP - 2;
-    pipsEl.innerHTML = '';
-    for(let i = 0; i < targetVP; i++){
-      const pip = document.createElement('div');
-      const filled = i < totalVP;
-      pip.className = 'r-vp-pip' + (filled ? ' filled' + (nearWin ? ' near' : '') : '');
-      if(filled) pip.style.setProperty('--pip-color', colorHex);
-      pipsEl.appendChild(pip);
-    }
+    const pct = Math.min(100, Math.round((totalVP / targetVP) * 100));
+    pipsEl.innerHTML = `<div class="r-vp-bar-fill${nearWin?' near':''}" style="width:${pct}%;background:${colorHex};${nearWin?'box-shadow:0 0 8px '+colorHex+'80':''}"></div>`;
   }
 
   // Turn banner
@@ -6056,6 +6113,22 @@ function renderRemote(){
   const phaseLabels = {'lobby':'esperando','starting':STATE.startingPhase===1?'1ª colocación':'2ª colocación','rolling':'tirar dados','main':'fase principal','discard':'descartar','robber':'mover Space Pirate','gameover':'fin'};
   document.getElementById('rTurnPhase').textContent = phaseLabels[STATE.phase] || '';
   document.getElementById('rTurnDice').innerHTML = '';
+
+  // Waiting hint when it's not my turn
+  const waitHint = document.getElementById('rWaitHint');
+  const waitHintText = document.getElementById('rWaitHintText');
+  if(waitHint && waitHintText){
+    const showWait = !isMyTurn && STATE.phase !== 'lobby' && STATE.phase !== 'gameover';
+    waitHint.style.display = showWait ? '' : 'none';
+    if(showWait && current){
+      const phaseWait = STATE.phase==='rolling' ? 'tirando dados'
+        : STATE.phase==='starting' ? 'colocando'
+        : STATE.phase==='discard' ? 'descartando'
+        : STATE.phase==='robber' ? 'moviendo Space Pirate'
+        : 'jugando';
+      waitHintText.textContent = `${current.name} está ${phaseWait}…`;
+    }
+  }
 
   // Visual dice display
   const diceBox = document.getElementById('rDiceBox');
@@ -6228,8 +6301,13 @@ function renderRemote(){
     dev.appendChild(row);
   });
 
+  const devTitle = document.getElementById('rDevTitle');
   if(dev.children.length === 0){
-    dev.innerHTML = '<div style="font-size:11px;color:var(--ink-dim);padding:6px 0">Sin cartas de tecnología</div>';
+    if(devTitle) devTitle.style.display = 'none';
+    dev.style.display = 'none';
+  } else {
+    if(devTitle) devTitle.style.display = '';
+    dev.style.display = '';
   }
 
   // Botones (habilitar/deshabilitar)
@@ -6352,7 +6430,7 @@ function renderRemote(){
           spots.slice(0,14).forEach(spot=>{
             const btn = document.createElement('button');
             btn.className = 'r-spot-btn';
-            btn.innerHTML = `<span class="r-spot-icon">🛸</span><span class="r-spot-label">${spot.label||'—'}</span><span class="r-spot-score">⬆ ${spot.score} pip${spot.score!==1?'s':''}</span>`;
+            btn.innerHTML = `<span class="r-spot-icon">🛸</span><span class="r-spot-label">${spot.label||'—'}</span><span class="r-spot-score">⬆ ${spot.score} prod.</span>`;
             btn.onclick = ()=>{ haptic(40); onVertexClick(spot.id); };
             spotsEl.appendChild(btn);
           });
@@ -6370,7 +6448,7 @@ function renderRemote(){
             const score = vertexProdScore(s.vertex);
             const btn = document.createElement('button');
             btn.className = 'r-spot-btn';
-            btn.innerHTML = `<span class="r-spot-icon">🌌</span><span class="r-spot-label">${lbl||'Base Lunar'}</span><span class="r-spot-score">⬆ ${score}</span>`;
+            btn.innerHTML = `<span class="r-spot-icon">🌌</span><span class="r-spot-label">${lbl||'Base Lunar'}</span><span class="r-spot-score">⬆ ${score} prod.</span>`;
             btn.onclick = ()=>{ haptic(40); onVertexClick(s.vertex); };
             spotsEl.appendChild(btn);
           });
@@ -6566,9 +6644,12 @@ function renderRemote(){
   }
 
   // Otros jugadores
+  const othersWrap = document.getElementById('rOthersWrap');
   const others = document.getElementById('rOthers');
   others.innerHTML = '';
-  STATE.players.filter(p=>p.id!==me.id).forEach(p=>{
+  const otherPlayers = STATE.players.filter(p=>p.id!==me.id);
+  if(othersWrap) othersWrap.style.display = otherPlayers.length > 0 ? '' : 'none';
+  otherPlayers.forEach(p=>{
     const totalRes = Object.values(p.resources).reduce((a,b)=>a+b,0);
     const totalDev = (p.devCards||[]).length + (p.devCardsBoughtThisTurn||[]).length;
     const totalVP = p.vp + (p._lrBonus||0) + (p._laBonus||0);
@@ -7731,20 +7812,61 @@ function applySnapshot(snap){
       return vp > bvp ? p : best;
     }, STATE.players[0]);
     if(winner && !document.getElementById('remoteWinnerBanner')){
-      const totalVP = winner.vp + (winner._lrBonus||0) + (winner._laBonus||0);
-      const hex = (PLAYER_COLORS[winner.color]||{}).hex || '#d9b46a';
-      const dur = STATE.gameDuration || 0;
+      const winVP  = winner.vp + (winner._lrBonus||0) + (winner._laBonus||0);
+      const hex    = (PLAYER_COLORS[winner.color]||{}).hex || '#d9b46a';
+      const dur    = STATE.gameDuration || 0;
+      const isMe   = winner.id === STATE.myPlayerId;
+
+      // Build sorted leaderboard
+      const sorted = [...STATE.players].sort((a,b)=>{
+        const va = a.vp+(a._lrBonus||0)+(a._laBonus||0);
+        const vb = b.vp+(b._lrBonus||0)+(b._laBonus||0);
+        return vb - va;
+      });
+      const leaderboard = sorted.map((p,i)=>{
+        const pvp  = p.vp+(p._lrBonus||0)+(p._laBonus||0);
+        const phex = (PLAYER_COLORS[p.color]||{}).hex || '#888';
+        const isW  = p.id === winner.id;
+        const medals = ['🥇','🥈','🥉'];
+        return `<div class="rwb-lb-row${isW?' winner-row':''}">
+          <div class="rwb-lb-rank">${medals[i]||`${i+1}`}</div>
+          <div class="rwb-lb-dot" style="background:${phex}"></div>
+          <div class="rwb-lb-name" style="color:${isW?phex:'var(--ink)'}">${p.name}${p.id===STATE.myPlayerId?' <span style="font-size:10px;opacity:.6">(yo)</span>':''}</div>
+          <div class="rwb-lb-vp">${pvp}<span style="font-size:10px;opacity:.6"> PV</span></div>
+        </div>`;
+      }).join('');
+
       const banner = document.createElement('div');
       banner.id = 'remoteWinnerBanner';
-      banner.style.cssText = `position:fixed;inset:0;z-index:900;background:#050810;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center`;
+      banner.className = '';
       banner.innerHTML = `
-        <div style="font-size:64px;line-height:1;margin-bottom:12px">🏆</div>
-        <div style="font-size:28px;font-weight:700;color:${hex};margin-bottom:6px">${winner.name}</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:4px">${totalVP} Puntos de Victoria · ¡Ganador!</div>
-        ${dur>0?`<div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:28px">⏱ ${formatDuration(dur)}</div>`:'<div style="margin-bottom:28px"></div>'}
-        <div style="font-size:13px;color:rgba(255,255,255,0.4)">La partida ha terminado</div>
+        <div class="rwb-trophy">${isMe?'🏆':'🎖️'}</div>
+        <div class="rwb-winner-name" style="color:${hex}">${winner.name}</div>
+        <div class="rwb-winner-sub">${winVP} Puntos de Victoria · ¡${isMe?'¡Ganaste!':'Campeón!'}</div>
+        ${dur>0?`<div class="rwb-dur">⏱ ${formatDuration(dur)} de conquista</div>`:'<div class="rwb-dur">Partida completada</div>'}
+        <div class="rwb-leaderboard">${leaderboard}</div>
+        <button class="rwb-btn-rematch" id="rwbBtnRematch">🔄 Nueva Partida</button>
+        <button class="rwb-btn-close" id="rwbBtnClose">× cerrar</button>
       `;
       document.body.appendChild(banner);
+
+      // Confetti!
+      setTimeout(()=>launchConfetti(hex), 80);
+      setTimeout(()=>launchConfetti('#d9b46a'), 300);
+      setTimeout(()=>launchConfetti(hex), 600);
+      setTimeout(()=>launchConfetti('#ffffff'), 900);
+
+      // Rematch button
+      document.getElementById('rwbBtnRematch')?.addEventListener('click', ()=>{
+        banner.remove();
+        sendAction({type:'request-rematch', deviceId:STATE.myDeviceId});
+        toast('Solicitud de revancha enviada al tablero 🎮');
+      });
+      document.getElementById('rwbBtnClose')?.addEventListener('click', ()=>{
+        banner.style.opacity='0';
+        banner.style.transition='opacity .3s';
+        setTimeout(()=>banner.remove(), 320);
+      });
     }
   }
 }
@@ -11789,8 +11911,7 @@ function showLanding(){
   if(relayEl){
     relayEl.innerHTML = relayUrl
       ? `<span style="color:#a8e7b8">⚡ Relay online:</span> <code style="font-size:10px">${relayUrl}</code>`
-      : `<span>Sin relay configurado — funciona en la misma red WiFi o
-         <a href="#" onclick="showLandingRelaySetup()" style="color:var(--gold-soft)">configura uno online</a></span>`;
+      : `<span>🛜 Funciona en red local WiFi · <a href="#" onclick="showLandingRelaySetup()" style="color:var(--gold-soft)">configurar relay online →</a></span>`;
   }
 
   document.getElementById('landingBtnBoard').onclick = ()=>{
