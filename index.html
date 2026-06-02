@@ -1454,6 +1454,46 @@ body.remote .toast-item{
   margin-top:2px;
 }
 .remote-react-strip .react-btn{font-size:20px;padding:7px 10px;border-radius:10px}
+
+/* ── Longest-road glow on SVG roads ── */
+@keyframes lrRoadPulse{0%,100%{opacity:.85}50%{opacity:1}}
+.built-piece.road.lr-road{animation:lrRoadPulse 1.8s ease-in-out infinite}
+
+/* ── Enhanced valid-spot highlights (placement mode) ── */
+#board.placing-settlement .vertex-spot.valid circle,
+#board.placing-city      .vertex-spot.valid circle{
+  fill:rgba(217,180,106,0.42)!important;stroke:var(--gold)!important;stroke-width:3!important;
+  filter:drop-shadow(0 0 7px rgba(217,180,106,0.75));
+}
+#board.placing-road .edge-spot.valid line{
+  stroke:var(--gold)!important;stroke-width:7!important;opacity:.85!important;
+  filter:drop-shadow(0 0 5px rgba(217,180,106,0.7));
+}
+
+/* ── VP race bar (sidebar) ── */
+.vp-race{display:flex;flex-direction:column;gap:5px;padding:8px 0 4px;border-top:1px solid rgba(255,255,255,.06);margin-top:6px}
+.vp-race-row{display:flex;align-items:center;gap:5px}
+.vp-race-name{font-size:9px;color:var(--ink-dim);width:54px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.vp-race-track{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.vp-race-fill{height:100%;border-radius:3px;transition:width .55s cubic-bezier(.4,0,.2,1)}
+.vp-race-num{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--gold-soft);width:20px;text-align:right;flex-shrink:0}
+
+/* ── Turn timer ── */
+.turn-timer{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.5px;transition:color .3s;color:var(--ink-dim)}
+.turn-timer.tt-warn{color:rgba(255,200,50,.9)!important}
+.turn-timer.tt-over{color:rgba(255,90,80,.9)!important;animation:pulse 1s ease-in-out infinite}
+
+/* ── Remote trade rates ── */
+.r-trade-rates{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0 4px}
+.r-trate{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:7px;font-size:10px;font-family:'JetBrains Mono',monospace}
+.r-trate.rt2{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:rgba(34,197,94,.95)}
+.r-trate.rt3{background:rgba(217,180,106,.1);border:1px solid rgba(217,180,106,.3);color:rgba(217,180,106,.9)}
+.r-trate.rt4{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.3)}
+
+/* ── Remote dev-card log ── */
+.r-dev-log-item{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.r-dev-log-item:last-child{border-bottom:none}
+.r-dev-log-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 </style>
 </head>
 <body class="board">
@@ -1835,7 +1875,10 @@ body.remote .toast-item{
   <aside class="panel left board-only">
 
     <div class="section">
-      <div class="section-title">Jugadores</div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Jugadores</span>
+        <span class="turn-timer" id="bTurnTimer"></span>
+      </div>
       <div class="players-list" id="playersList"></div>
     </div>
 
@@ -2133,7 +2176,10 @@ body.remote .toast-item{
           <div class="rt-phase" id="rTurnPhase">esperando</div>
         </div>
       </div>
-      <div style="text-align:right" id="rTurnDice"></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <div id="rTurnDice"></div>
+        <span class="turn-timer" id="rTurnTimer" style="display:none"></span>
+      </div>
     </div>
 
     <!-- Dados visuales (aparece tras tirar) -->
@@ -2149,6 +2195,8 @@ body.remote .toast-item{
         <span class="count" id="rHandCount">0 cartas</span>
       </div>
       <div class="resource-row" id="rResources"></div>
+      <!-- Trade rates (updated by renderRemote) -->
+      <div class="r-trade-rates" id="rTradeRates" style="display:none"></div>
 
       <div class="r-hand-title" style="margin-top:16px">
         Tecnología Espacial
@@ -2307,6 +2355,12 @@ body.remote .toast-item{
           <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-dim)"><span style="width:10px;height:10px;border-radius:2px;background:var(--c-ore);display:inline-block"></span>Cristales 💎</span>
         </div>
       </div>
+    </div>
+
+    <!-- Dev card action log (last 5 events) -->
+    <div id="rDevLogSection" style="display:none;margin:0 12px 8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 10px">
+      <div style="font-size:9px;letter-spacing:.6px;color:var(--ink-dim);text-transform:uppercase;margin-bottom:5px">📜 Cartas jugadas</div>
+      <div id="rDevLog"></div>
     </div>
 
     <div class="others-table">
@@ -2654,7 +2708,11 @@ const STATE = {
 
   /* Timer */
   gameStartTime: null,       // Date.now() cuando arranca la partida
+  turnStartTime: null,       // Date.now() cuando arranca el turno actual
   gameDuration: null,        // segundos totales al terminar
+
+  /* Dev card log */
+  devCardLog: [],            // [{playerName, playerColor, label}] últimas 6 cartas jugadas
 
   /* Pairing */
   pairCode: null,
@@ -2886,12 +2944,15 @@ function startGame(opts){
   if(desert) STATE.robberHex = hexKey(desert.q, desert.r);
 
   STATE.gameStartTime = Date.now();
-  STATE.gameDuration = null;
+  STATE.turnStartTime = Date.now();
+  STATE.devCardLog    = [];
+  STATE.gameDuration  = null;
   _buildSnapshot = {};   // reset so no pop on initial placement
   AudioEngine.startMusic();
   BoardView.reset();
   initStarField();
   startGameTimer();
+  startTurnTimer();
   logEvent('🚀 ¡Partida iniciada! · Fase de colonización espacial', '#d9b46a');
   // Tutorial en primera partida
   if(!_tutDone) setTimeout(()=>showTutorial(0), 1200);
@@ -3106,6 +3167,7 @@ function endTurn(){
   STATE.phase = 'rolling';
   STATE.lastRoll = null;
   STATE.pendingAction = null;
+  STATE.turnStartTime = Date.now();
   AudioEngine.sfx.turn();
   const nextP = STATE.players[STATE.currentPlayerIdx];
   logEvent(`Turno de ${nextP.name}`, nextP.color);
@@ -3151,9 +3213,11 @@ function advanceStartingPhase(){
     STATE.startingPhase = 3;
     STATE.currentPlayerIdx = STATE.startingOrder[0];
     STATE.pendingAction = null;
+    STATE.turnStartTime = Date.now();
     logEvent(`Fase inicial completa · Turno de ${STATE.players[STATE.currentPlayerIdx].name}`, '#d9b46a');
   } else {
     // Avanzar al siguiente jugador
+    STATE.turnStartTime = Date.now();
     const placedSoFar = STATE.players.length*2 - STATE.startingPlacementsLeft;
     let idx;
     if(placedSoFar < STATE.players.length){
@@ -3240,22 +3304,30 @@ function playDevCard(playerId, cardType, opts={}){
   me.devCards.splice(me.devCards.indexOf(cardType), 1);
   STATE.devCardPlayedThisTurn = true;
 
+  const DEV_EMOJI = {knight:'🛡',road:'🚀',plenty:'⚡',monopoly:'👾',vp:'🏆'};
+  let devLogLabel = '';
   switch(cardType){
     case 'knight':
       me.knightsPlayed = (me.knightsPlayed||0) + 1;
       STATE.pendingAction = {type:'move-robber', playerId, returnPhase: STATE.phase};
       STATE.phase = 'robber';
       logEvent(`${me.name} despliega Guardian 🛡`, me.color);
+      AudioEngine.sfx.knight();
+      devLogLabel = 'Guardian 🛡';
       break;
     case 'road':
       STATE.devRoadsLeft = 2;
       STATE.pendingAction = {type:'place-road', playerId, free:true};
       logEvent(`${me.name} construye 2 Corredores Estelares 🚀`, me.color);
+      AudioEngine.sfx.roadBuilder();
+      devLogLabel = '2 Corredores 🚀';
       break;
     case 'plenty':
       me.resources[opts.res1] = (me.resources[opts.res1]||0) + 1;
       me.resources[opts.res2] = (me.resources[opts.res2]||0) + 1;
       logEvent(`${me.name} · Suministro: ${RESOURCE_INFO[opts.res1].name} + ${RESOURCE_INFO[opts.res2].name}`, me.color);
+      AudioEngine.sfx.plenty();
+      devLogLabel = `Suministro ⚡ ${RESOURCE_INFO[opts.res1]?.emoji}${RESOURCE_INFO[opts.res2]?.emoji}`;
       break;
     case 'monopoly': {
       let total = 0;
@@ -3267,8 +3339,18 @@ function playDevCard(playerId, cardType, opts={}){
         total += q;
       });
       logEvent(`${me.name} · Asalto Pirata: roba ${total} ${RESOURCE_INFO[opts.res].name}`, me.color);
+      AudioEngine.sfx.monopoly();
+      devLogLabel = `Asalto 👾 ${RESOURCE_INFO[opts.res]?.emoji}×${total}`;
       break;
     }
+  }
+  // Log dev card action for remote display
+  if(devLogLabel){
+    STATE.devCardLog = (STATE.devCardLog||[]).concat([{
+      playerName: me.name,
+      playerColor: me.color,
+      label: devLogLabel
+    }]).slice(-6);
   }
   checkVictory();
   renderAll();
@@ -3530,6 +3612,43 @@ function recalcLongestRoad(){
   });
 }
 
+// Returns the Set of edge IDs that form the longest road for a player
+function getLongestRoadEdges(player){
+  if(!player || player.roads.length === 0) return new Set();
+  if(player.roads.length < 2) return new Set(player.roads.map(r=>r.edge));
+  const adj = new Map();
+  player.roads.forEach(r=>{
+    const e = STATE.edges.get(r.edge);
+    if(!e) return;
+    e.verts.forEach((v,i)=>{
+      const other = e.verts[1-i];
+      if(!adj.has(v)) adj.set(v, []);
+      const enemyHere = STATE.players.some(pp=>pp.id!==player.id && (
+        pp.settlements.some(s=>s.vertex===v) || pp.cities.some(c=>c.vertex===v)
+      ));
+      if(enemyHere) return;
+      adj.get(v).push({to:other, edge:r.edge});
+    });
+  });
+  let bestPath = [];
+  function dfsPath(v, visited, path){
+    let best = path.slice();
+    for(const n of (adj.get(v)||[])){
+      if(visited.has(n.edge)) continue;
+      visited.add(n.edge);
+      const res = dfsPath(n.to, visited, [...path, n.edge]);
+      if(res.length > best.length) best = res;
+      visited.delete(n.edge);
+    }
+    return best;
+  }
+  adj.forEach((_,v)=>{
+    const res = dfsPath(v, new Set(), []);
+    if(res.length > bestPath.length) bestPath = res;
+  });
+  return new Set(bestPath);
+}
+
 /* ============================================================
    TIMER DE SESIÓN
 ============================================================ */
@@ -3564,6 +3683,32 @@ function stopGameTimer(){
   if(STATE.gameStartTime && !STATE.gameDuration){
     STATE.gameDuration = Math.floor((Date.now()-STATE.gameStartTime)/1000);
   }
+}
+
+let _turnTimerInterval = null;
+function startTurnTimer(){
+  if(_turnTimerInterval) clearInterval(_turnTimerInterval);
+  _turnTimerInterval = setInterval(()=>{
+    if(!STATE.turnStartTime) return;
+    const secs = Math.floor((Date.now() - STATE.turnStartTime) / 1000);
+    const mm = String(Math.floor(secs/60)).padStart(2,'0');
+    const ss = String(secs%60).padStart(2,'0');
+    const label = `⏱ ${mm}:${ss}`;
+    const cls = secs>120?'tt-over':secs>60?'tt-warn':'';
+    // Board sidebar timer
+    const bEl = document.getElementById('bTurnTimer');
+    if(bEl){ bEl.textContent=label; bEl.className='turn-timer'+(cls?' '+cls:''); }
+    // Remote turn timer
+    const rEl = document.getElementById('rTurnTimer');
+    if(rEl){
+      rEl.textContent=label;
+      rEl.className='turn-timer'+(cls?' '+cls:'');
+      rEl.style.display='';
+    }
+  }, 1000);
+}
+function stopTurnTimer(){
+  if(_turnTimerInterval){ clearInterval(_turnTimerInterval); _turnTimerInterval=null; }
 }
 
 /* ============================================================
@@ -3675,10 +3820,17 @@ function checkVictory(){
   STATE.players.forEach(p=>{
     if(p.knightsPlayed>=3 && p.knightsPlayed>laLen){laLen=p.knightsPlayed; largestArmyHolder=p.id;}
   });
+  const _prevLrHolder = STATE.players.find(p=>p._lrBonus>0)?.id;
+  const _prevLaHolder = STATE.players.find(p=>p._laBonus>0)?.id;
   STATE.players.forEach(p=>{
     p._lrBonus = (p.id===longestRoadHolder)?2:0;
     p._laBonus = (p.id===largestArmyHolder)?2:0;
   });
+  // Play achievement sound when LR/LA changes hands
+  if(STATE.appMode==='board'){
+    if(longestRoadHolder && longestRoadHolder !== _prevLrHolder) AudioEngine.sfx.lr();
+    if(largestArmyHolder && largestArmyHolder !== _prevLaHolder) AudioEngine.sfx.lr();
+  }
 
   // Verificar victoria
   const target = STATE.targetVP || 10;
@@ -3687,6 +3839,7 @@ function checkVictory(){
     if(total >= target){
       STATE.phase = 'gameover';
       stopGameTimer();
+      stopTurnTimer();
       logEvent(`🏆 ¡${p.name} GANA con ${total} puntos!`, p.color);
       broadcastState();
       AudioEngine.setMood('normal');
@@ -3798,6 +3951,11 @@ function renderBoard(){
       <stop offset="52%"  stop-color="rgba(255,255,255,0.02)"/>
       <stop offset="100%" stop-color="rgba(0,0,0,0.30)"/>
     </linearGradient>
+    <!-- Longest-road segment glow -->
+    <filter id="lrGlowFilter" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
     <filter id="tokenShadow" x="-30%" y="-30%" width="160%" height="160%">
       <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.5)"/>
     </filter>
@@ -4679,6 +4837,10 @@ function renderBuildings(){
   // Eliminar previos
   gBoard.querySelectorAll('.built-piece').forEach(el=>el.remove());
 
+  // Pre-compute LR highlight edges
+  const lrHolder = STATE.players.find(p=>p._lrBonus > 0);
+  const lrEdgeSet = lrHolder ? getLongestRoadEdges(lrHolder) : new Set();
+
   STATE.players.forEach(p=>{
     const color = PLAYER_COLORS[p.color].hex;
     const prev = _buildSnapshot[p.id] || {roads:0, settlements:0, cities:0};
@@ -4689,7 +4851,8 @@ function renderBuildings(){
       if(!e) return;
       const g = document.createElementNS('http://www.w3.org/2000/svg','g');
       const isNew = idx >= prev.roads;
-      g.setAttribute('class','built-piece road' + (isNew?' build-new':''));
+      const isLR  = lrHolder && p.id===lrHolder.id && lrEdgeSet.has(r.edge);
+      g.setAttribute('class','built-piece road' + (isNew?' build-new':'') + (isLR?' lr-road':''));
       // Línea gruesa con borde negro
       const black = document.createElementNS('http://www.w3.org/2000/svg','line');
       black.setAttribute('x1',e.x1);black.setAttribute('y1',e.y1);
@@ -4705,6 +4868,17 @@ function renderBuildings(){
       col.setAttribute('stroke-width','8');
       col.setAttribute('stroke-linecap','round');
       g.appendChild(col);
+      // LR glow overlay
+      if(isLR){
+        const glow = document.createElementNS('http://www.w3.org/2000/svg','line');
+        glow.setAttribute('x1',e.x1);glow.setAttribute('y1',e.y1);
+        glow.setAttribute('x2',e.x2);glow.setAttribute('y2',e.y2);
+        glow.setAttribute('stroke','rgba(255,255,255,0.55)');
+        glow.setAttribute('stroke-width','3');
+        glow.setAttribute('stroke-linecap','round');
+        glow.setAttribute('filter','url(#lrGlowFilter)');
+        g.appendChild(glow);
+      }
       gBoard.appendChild(g);
     });
 
@@ -5032,6 +5206,31 @@ function renderPlayersList(){
     c.innerHTML = header + resBreakdown + footer;
     list.appendChild(c);
   });
+
+  // VP race bar (board sidebar only)
+  if(STATE.appMode==='board' && STATE.players.length > 0 && STATE.phase!=='lobby'){
+    const target = STATE.targetVP || 10;
+    const sorted = [...STATE.players].sort((a,b)=>{
+      const va = a.vp+(a._lrBonus||0)+(a._laBonus||0);
+      const vb = b.vp+(b._lrBonus||0)+(b._laBonus||0);
+      return vb - va;
+    });
+    const raceDiv = document.createElement('div');
+    raceDiv.className = 'vp-race';
+    sorted.forEach(p=>{
+      const vp = p.vp+(p._lrBonus||0)+(p._laBonus||0);
+      const pct = Math.min(100, Math.round(vp/target*100));
+      const hex = PLAYER_COLORS[p.color].hex;
+      raceDiv.innerHTML += `<div class="vp-race-row">
+        <div class="vp-race-name" title="${p.name}">${p.name}</div>
+        <div class="vp-race-track">
+          <div class="vp-race-fill" style="width:${pct}%;background:${hex}"></div>
+        </div>
+        <div class="vp-race-num">${vp}</div>
+      </div>`;
+    });
+    list.appendChild(raceDiv);
+  }
 }
 
 function renderBoardActions(){
@@ -5501,6 +5700,37 @@ function renderRemote(){
   r.innerHTML = '';
   const totalRes = Object.values(me.resources).reduce((a,b)=>a+b,0);
   document.getElementById('rHandCount').textContent = totalRes + ' carta' + (totalRes!==1?'s':'');
+
+  // Trade rates panel (ports)
+  const trEl = document.getElementById('rTradeRates');
+  if(trEl){
+    const rates = {wood:4, wool:4, wheat:4, ore:4, brick:4};
+    let generic = 4;
+    for(const port of (STATE.ports || [])){
+      const onPort = me.settlements.some(s=>s.vertex===port.vertex1||s.vertex===port.vertex2) ||
+                     me.cities.some(c=>c.vertex===port.vertex1||c.vertex===port.vertex2);
+      if(!onPort) continue;
+      if(port.type==='3:1') generic = Math.min(generic, 3);
+      else rates[port.type] = Math.min(rates[port.type], 2);
+    }
+    Object.keys(rates).forEach(k=>{ rates[k] = Math.min(rates[k], generic); });
+    const hasPorts = Object.values(rates).some(v=>v<4) || generic < 4;
+    if(hasPorts){
+      trEl.style.display = 'flex';
+      // Show 3:1 chip if player has generic port (and it applies to some resources)
+      let html = '';
+      if(generic === 3) html += `<span class="r-trate rt3">🏦 3:1</span>`;
+      html += Object.entries(rates).map(([k,v])=>{
+        if(v===4) return '';   // no special port for this resource
+        const info = RESOURCE_INFO[k];
+        const cls = v===2?'rt2':'rt3';
+        return `<span class="r-trate ${cls}">${info.emoji} ${v}:1</span>`;
+      }).join('');
+      trEl.innerHTML = html;
+    } else {
+      trEl.style.display = 'none';
+    }
+  }
   Object.entries(RESOURCE_INFO).forEach(([k,info])=>{
     const qty = me.resources[k]||0;
     const c = document.createElement('div');
@@ -5833,6 +6063,26 @@ function renderRemote(){
     `;
     others.appendChild(row);
   });
+
+  // Dev card log
+  const devLogEl  = document.getElementById('rDevLog');
+  const devLogSec = document.getElementById('rDevLogSection');
+  const log = STATE.devCardLog || [];
+  if(devLogEl && devLogSec){
+    if(log.length > 0){
+      devLogSec.style.display = '';
+      devLogEl.innerHTML = log.slice().reverse().map(entry=>{
+        const hex = PLAYER_COLORS[entry.playerColor]?.hex || '#888';
+        return `<div class="r-dev-log-item">
+          <div class="r-dev-log-dot" style="background:${hex}"></div>
+          <span style="color:${hex};font-weight:600;max-width:55px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${entry.playerName}</span>
+          <span style="flex:1">${entry.label}</span>
+        </div>`;
+      }).join('');
+    } else {
+      devLogSec.style.display = 'none';
+    }
+  }
 
   // Bottom bar sync
   const rbbRoll = document.getElementById('rBottomRoll');
@@ -6691,7 +6941,9 @@ function makeSnapshot(){
     log: STATE.log.slice(0,40),
     targetVP: STATE.targetVP || 10,
     gameStartTime: STATE.gameStartTime || null,
-    gameDuration: STATE.gameDuration || null
+    turnStartTime: STATE.turnStartTime || null,
+    gameDuration: STATE.gameDuration || null,
+    devCardLog: STATE.devCardLog || []
   };
 }
 
@@ -6724,7 +6976,9 @@ function applySnapshot(snap){
   STATE.log = snap.log || [];
   STATE.targetVP = snap.targetVP || 10;
   STATE.gameStartTime = snap.gameStartTime || null;
-  STATE.gameDuration = snap.gameDuration || null;
+  STATE.turnStartTime = snap.turnStartTime || null;
+  STATE.gameDuration  = snap.gameDuration  || null;
+  STATE.devCardLog    = snap.devCardLog    || [];
 
   // Reconstruir vertices/edges localmente
   const ve = buildVertexEdgeMap(STATE.hexes, STATE.size);
@@ -6949,6 +7203,7 @@ function handleSyncMessageRemote(msg){
   // 'restore' en remote: tratar igual que 'state'
   if(msg.type==='restore'){
     applySnapshot(msg.payload);
+    startTurnTimer();
     renderRemote();
     return;
   }
@@ -9856,6 +10111,31 @@ const AudioEngine = (() => {
                 g.gain.setValueAtTime(0.28,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.28);
                 o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+0.3); }catch(e){} },
     devCard(){ try{ boot(); const t=ctx.currentTime; noiseBurst(0.1,0.16,t); tone(440,'sine',0.12,0.16,t+0.06); tone(660,'sine',0.1,0.1,t+0.13); }catch(e){} },
+    knight(){ try{ boot(); const t=ctx.currentTime;
+                // Heroic fanfare — 3-note ascending chord
+                [330,440,523,659].forEach((f,i)=>tone(f,'square',0.28-i*0.04,0.22,t+i*0.07));
+                tone(659,'sine',0.45,0.18,t+0.32); noiseBurst(0.06,0.08,t); }catch(e){} },
+    monopoly(){ try{ boot(); const t=ctx.currentTime;
+                // Dramatic descending sweep — pirate ambush
+                const o=ctx.createOscillator(),g=ctx.createGain();
+                o.type='sawtooth'; o.frequency.setValueAtTime(600,t); o.frequency.exponentialRampToValueAtTime(110,t+0.5);
+                g.gain.setValueAtTime(0.32,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+                o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+0.55);
+                noiseBurst(0.12,0.14,t+0.05); }catch(e){} },
+    plenty(){ try{ boot(); const t=ctx.currentTime;
+                // Abundance — rising arpeggio + shimmer
+                [262,330,392,523,659].forEach((f,i)=>tone(f,'triangle',0.22,0.2,t+i*0.06));
+                tone(1047,'sine',0.3,0.14,t+0.38); }catch(e){} },
+    roadBuilder(){ try{ boot(); const t=ctx.currentTime;
+                // Double construction thud
+                [1,2].forEach(i=>{ const o=ctx.createOscillator(),g=ctx.createGain();
+                  o.type='sawtooth'; o.frequency.setValueAtTime(380,t+(i-1)*0.22); o.frequency.exponentialRampToValueAtTime(120,t+(i-1)*0.22+0.18);
+                  g.gain.setValueAtTime(0.22,t+(i-1)*0.22); g.gain.exponentialRampToValueAtTime(0.0001,t+(i-1)*0.22+0.2);
+                  o.connect(g); g.connect(sfxGain); o.start(t+(i-1)*0.22); o.stop(t+(i-1)*0.22+0.22); }); }catch(e){} },
+    lr(){ try{ boot(); const t=ctx.currentTime;
+                // Achievement fanfare for longest road
+                [523,659,784,1047].forEach((f,i)=>{ tone(f,'sine',0.5,0.24,t+i*0.09); tone(f/2,'triangle',0.3,0.14,t+i*0.09); });
+                tone(1319,'sine',0.6,0.22,t+0.42); }catch(e){} },
     trade(){  try{ boot(); const t=ctx.currentTime; tone(660,'sine',0.18,0.22,t); tone(880,'triangle',0.16,0.2,t+0.11); tone(1100,'sine',0.12,0.14,t+0.2); }catch(e){} },
     turn(){   try{ boot(); const t=ctx.currentTime; tone(523,'sine',0.18,0.22,t); tone(659,'sine',0.14,0.18,t+0.09); }catch(e){} },
     win(){    try{ boot(); const t=ctx.currentTime;
