@@ -1536,6 +1536,30 @@ body.remote .toast-item{
 /* ── Board chat bubble ── */
 .board-chat-toast{position:fixed;bottom:78px;right:18px;z-index:902;background:linear-gradient(160deg,rgba(8,16,36,.97),rgba(4,8,20,.97));border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;max-width:230px;font-size:12px;animation:chatIn .3s cubic-bezier(.2,1.4,.4,1) both;pointer-events:none}
 @keyframes chatIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ── Live Board View Overlay (remote mode) ── */
+#rBoardViewBtn{display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:7px;background:rgba(90,200,220,.09);border:1px solid rgba(90,200,220,.25);font-size:11px;color:rgba(90,200,220,.85);cursor:pointer;touch-action:manipulation;font-family:'JetBrains Mono',monospace;transition:background .15s}
+#rBoardViewBtn.active{background:rgba(90,200,220,.22);border-color:rgba(90,200,220,.5);color:#5ac8e0}
+/* Stage becomes fullscreen overlay in board-view mode */
+body.remote.r-board-view #stage{position:fixed!important;inset:0!important;z-index:9800!important;display:block!important;background:var(--bg-0)!important;overflow:hidden}
+body.remote.r-board-view #boardWrap{display:grid!important;place-items:center!important;position:absolute!important;inset:0!important}
+/* Close button (top-right of board view) */
+#rBoardViewClose{display:none;position:fixed;top:max(14px,env(safe-area-inset-top,14px));right:14px;z-index:9902;background:rgba(5,8,16,.88);border:1px solid rgba(217,180,106,.4);border-radius:20px;padding:7px 14px;color:var(--gold-soft);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;backdrop-filter:blur(8px);touch-action:manipulation}
+body.remote.r-board-view #rBoardViewClose{display:flex;align-items:center;gap:5px}
+/* Placement hint at bottom of board view */
+#rBoardViewHint{display:none;position:fixed;bottom:max(20px,env(safe-area-inset-bottom,20px));left:50%;transform:translateX(-50%);z-index:9901;background:rgba(5,8,16,.95);border:1px solid rgba(245,166,35,.5);border-radius:13px;padding:9px 18px;font-size:12px;color:var(--gold-soft);font-family:'JetBrains Mono',monospace;white-space:nowrap;backdrop-filter:blur(10px);animation:pulse-gold 2.2s ease-in-out infinite;pointer-events:none;text-align:center}
+body.remote.r-board-view #rBoardViewHint{display:block}
+
+/* ── Placement spot list (remote) ── */
+#rPlacementSpots{margin:0 12px 8px;display:none;flex-direction:column;gap:5px}
+.r-spot-btn{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.26);cursor:pointer;touch-action:manipulation;text-align:left;width:100%;transition:background .12s;-webkit-tap-highlight-color:transparent}
+.r-spot-btn:active{background:rgba(245,166,35,.18);transform:scale(.98)}
+.r-spot-icon{font-size:16px;flex-shrink:0;line-height:1}
+.r-spot-label{flex:1;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink);line-height:1.4}
+.r-spot-score{font-size:9px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;padding:2px 6px;background:rgba(255,255,255,.06);border-radius:5px;white-space:nowrap}
+.r-open-board-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 14px;border-radius:8px;background:rgba(90,200,220,.08);border:1px solid rgba(90,200,220,.28);color:rgba(90,200,220,.9);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;touch-action:manipulation;width:100%;transition:background .12s;-webkit-tap-highlight-color:transparent}
+.r-open-board-btn:active{background:rgba(90,200,220,.18)}
+.r-spot-section-title{font-size:9px;color:var(--ink-dim);letter-spacing:.5px;text-transform:uppercase;padding:2px 2px 4px;font-family:'JetBrains Mono',monospace}
 </style>
 </head>
 <body class="board">
@@ -2209,8 +2233,14 @@ body.remote .toast-item{
           <div class="r-vp-pips" id="rMeVpPips"></div>
         </div>
       </div>
-      <div class="conn-status" id="rConnStatus">conectado</div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <button id="rBoardViewBtn" title="Ver tablero en vivo">👁 Tablero</button>
+        <div class="conn-status" id="rConnStatus">conectado</div>
+      </div>
     </div>
+    <!-- Fixed overlay controls for board view mode -->
+    <button id="rBoardViewClose">← Volver</button>
+    <div id="rBoardViewHint"></div>
 
     <div class="r-turn" id="rTurnBanner">
       <div class="rt-left">
@@ -2252,11 +2282,13 @@ body.remote .toast-item{
 
     <div class="placement-banner" id="rPlacementBanner" style="display:none">
       <div class="pb-icon" id="rPlacementIcon">📍</div>
-      <div>
+      <div style="flex:1">
         <div class="pb-label" id="rPlacementTitle">Colocando...</div>
-        <div class="pb-hint" id="rPlacementHint">Toca la posición en el tablero</div>
+        <div class="pb-hint" id="rPlacementHint">Elige una posición abajo</div>
       </div>
     </div>
+    <!-- Placement spot list + board view button -->
+    <div id="rPlacementSpots"></div>
 
     <div class="trade-offer-banner" id="rTradeBanner" style="display:none">
       <div class="tob-header">↔ <span id="rTradeOfferLabel">Intercambio propuesto</span></div>
@@ -5125,6 +5157,32 @@ function renderBuildings(){
 }
 
 /* =============== MÓDULO 12: HANDLERS DE CLIC EN TABLERO ================ */
+
+/* ─── Helpers: vertex/edge labeling for remote placement UI ─── */
+function getVertexAdjacentHexes(vertexId){
+  // Each vertex already stores adjacent hex coords from buildVertexEdgeMap
+  const v = STATE.vertices?.get(vertexId);
+  if(!v) return [];
+  return (v.hexes||[]).map(({q,r})=>STATE.hexes.find(h=>h.q===q&&h.r===r)).filter(Boolean);
+}
+
+function vertexProdScore(vertexId){
+  return getVertexAdjacentHexes(vertexId)
+    .reduce((s,h)=>s+(PROB_DOTS[h.number]||0), 0);
+}
+
+function vertexLabel(vertexId){
+  const hexes = getVertexAdjacentHexes(vertexId);
+  const parts = hexes
+    .filter(h=>h.terrain!=='desert' && TERRAIN_INFO[h.terrain]?.resource)
+    .map(h=>{
+      const ri = RESOURCE_INFO[TERRAIN_INFO[h.terrain].resource];
+      return ri ? `${ri.emoji}${h.number||'?'}` : '';
+    })
+    .filter(Boolean);
+  return parts.length ? parts.join(' ') : '—';
+}
+
 function onVertexClick(vertexId){
   const action = STATE.pendingAction;
   if(!action) return;
@@ -5668,6 +5726,25 @@ let _undoSnapshot = null;          // state snapshot for undo (not serialized)
 
 function haptic(ms){ try{ navigator.vibrate?.(ms); }catch(e){} }
 
+/* ─── Remote Board View helpers ─── */
+let _rWasInMyPlacement = false;   // track placement mode transitions for auto-open
+let _rBoardViewAutoOpened = false; // was board view auto-opened by placement?
+
+function _openBoardView(){
+  document.body.classList.add('r-board-view');
+  const btn = document.getElementById('rBoardViewBtn');
+  if(btn) btn.classList.add('active');
+}
+function _closeBoardView(){
+  document.body.classList.remove('r-board-view');
+  const btn = document.getElementById('rBoardViewBtn');
+  if(btn) btn.classList.remove('active');
+}
+function _toggleBoardView(){
+  if(document.body.classList.contains('r-board-view')) _closeBoardView();
+  else _openBoardView();
+}
+
 function rDieFaceHTML(n){
   // 3×3 grid dot patterns for die faces 1–6
   const PATTERNS = {
@@ -5902,6 +5979,17 @@ function renderRemote(){
   const inPlacement = STATE.pendingAction && STATE.pendingAction.playerId===me.id;
   const inTrade = !!STATE.pendingTrade;
 
+  // Auto-open board view when placement starts; auto-close when it ends
+  const _nowMyPlacement = inPlacement && ['place-settlement','place-road','place-city','move-robber'].includes(STATE.pendingAction?.type);
+  if(_nowMyPlacement && !_rWasInMyPlacement){
+    _rBoardViewAutoOpened = true;
+    _openBoardView();
+  } else if(!_nowMyPlacement && _rWasInMyPlacement && _rBoardViewAutoOpened){
+    _rBoardViewAutoOpened = false;
+    _closeBoardView();
+  }
+  _rWasInMyPlacement = _nowMyPlacement;
+
   // Mano de recursos
   const r = document.getElementById('rResources');
   r.innerHTML = '';
@@ -6079,8 +6167,12 @@ function renderRemote(){
   document.getElementById('rBtnTradePlayer').disabled = !canAct || inPlacement || inTrade;
   document.getElementById('rBtnEndTurn').disabled = !((STATE.phase==='main' && STATE.lastRoll && isMyTurn) || (STATE.phase==='starting' && current && current.id===me.id && STATE.startingPlacedThisTurn?.settlement && STATE.startingPlacedThisTurn?.road));
 
-  // Banner de modo colocación
+  // Banner de modo colocación + spot list
   const pbEl = document.getElementById('rPlacementBanner');
+  const spotsEl = document.getElementById('rPlacementSpots');
+  const bvHintEl = document.getElementById('rBoardViewHint');
+  const isMyPlacement = inPlacement && STATE.pendingAction?.playerId === me.id;
+
   if(inPlacement){
     const act = STATE.pendingAction;
     const labels = {
@@ -6089,25 +6181,125 @@ function renderRemote(){
       'place-city':'Construyendo Metrópolis',
       'move-robber':'Moviendo Space Pirate'
     };
-    const hints = {
-      'place-settlement':'Señala la posición en el tablero',
-      'place-road':'Señala la arista en el tablero',
-      'place-city':'Señala la Base Lunar a mejorar',
-      'move-robber':'Señala el sector en el tablero'
-    };
     const icons = {
       'place-settlement':'🛸',
       'place-road':'🚀',
       'place-city':'🌌',
       'move-robber':'👾'
     };
+    const bvHints = {
+      'place-settlement':'🛸 Toca un vértice brillante en el tablero',
+      'place-road':'🚀 Toca una arista brillante en el tablero',
+      'place-city':'🌌 Toca tu Base Lunar para mejorarla',
+      'move-robber':'👾 Toca el sector donde mover al pirata'
+    };
     document.getElementById('rPlacementIcon').textContent = icons[act.type] || '📍';
     document.getElementById('rPlacementTitle').textContent = labels[act.type] || 'Colocando...';
-    document.getElementById('rPlacementHint').textContent = hints[act.type] || 'Toca el tablero';
+    document.getElementById('rPlacementHint').textContent = isMyPlacement ? 'Elige abajo o abre el tablero' : 'Esperando colocación...';
     pbEl.style.display = 'flex';
+    if(bvHintEl) bvHintEl.textContent = bvHints[act.type] || '👆 Toca el tablero';
   } else {
     pbEl.style.display = 'none';
+    if(bvHintEl) bvHintEl.textContent = '';
   }
+
+  // Placement spot list (only shown when it's MY placement turn)
+  if(spotsEl){
+    if(isMyPlacement){
+      spotsEl.style.display = 'flex';
+      spotsEl.innerHTML = '';
+      const act = STATE.pendingAction;
+      const isStarting = STATE.phase === 'starting';
+
+      // ── Button to open board view ──
+      const openBoardBtn = document.createElement('button');
+      openBoardBtn.className = 'r-open-board-btn';
+      openBoardBtn.innerHTML = '🗺️ &nbsp;Abrir tablero interactivo';
+      openBoardBtn.onclick = ()=>{ haptic(30); _openBoardView(); };
+      spotsEl.appendChild(openBoardBtn);
+
+      if(act.type === 'place-settlement'){
+        // Collect valid vertices sorted by production score
+        const spots = [];
+        STATE.vertices.forEach((v, id)=>{
+          if(isVertexValidForSettlement(id, me.id, isStarting)){
+            spots.push({id, score: vertexProdScore(id), label: vertexLabel(id)});
+          }
+        });
+        spots.sort((a,b)=>b.score-a.score);
+        if(spots.length){
+          const title = document.createElement('div');
+          title.className = 'r-spot-section-title';
+          title.textContent = `${spots.length} posición${spots.length!==1?'es':''} disponible${spots.length!==1?'s':''}`;
+          spotsEl.appendChild(title);
+          spots.slice(0,14).forEach(spot=>{
+            const btn = document.createElement('button');
+            btn.className = 'r-spot-btn';
+            btn.innerHTML = `<span class="r-spot-icon">🛸</span><span class="r-spot-label">${spot.label||'—'}</span><span class="r-spot-score">⬆ ${spot.score} pip${spot.score!==1?'s':''}</span>`;
+            btn.onclick = ()=>{ haptic(40); onVertexClick(spot.id); };
+            spotsEl.appendChild(btn);
+          });
+        }
+
+      } else if(act.type === 'place-city'){
+        // List the player's own settlements (upgradeable spots)
+        if(me.settlements.length){
+          const title = document.createElement('div');
+          title.className = 'r-spot-section-title';
+          title.textContent = 'Elige una Base Lunar para mejorar';
+          spotsEl.appendChild(title);
+          me.settlements.forEach(s=>{
+            const lbl = vertexLabel(s.vertex);
+            const score = vertexProdScore(s.vertex);
+            const btn = document.createElement('button');
+            btn.className = 'r-spot-btn';
+            btn.innerHTML = `<span class="r-spot-icon">🌌</span><span class="r-spot-label">${lbl||'Base Lunar'}</span><span class="r-spot-score">⬆ ${score}</span>`;
+            btn.onclick = ()=>{ haptic(40); onVertexClick(s.vertex); };
+            spotsEl.appendChild(btn);
+          });
+        }
+
+      } else if(act.type === 'place-road'){
+        // Collect valid edges
+        const startV = isStarting ? STATE.startingPlacedThisTurn?.lastVertex : null;
+        const roadSpots = [];
+        STATE.edges.forEach((e, id)=>{
+          if(isEdgeValidForRoad(id, me.id, isStarting, startV)){
+            // Label with the hexes adjacent to each endpoint
+            const l1 = vertexLabel(e.verts[0]);
+            const l2 = vertexLabel(e.verts[1]);
+            const lbl = (l1&&l2) ? `${l1} ↔ ${l2}` : (l1||l2||'—');
+            roadSpots.push({id, label: lbl});
+          }
+        });
+        if(roadSpots.length){
+          const title = document.createElement('div');
+          title.className = 'r-spot-section-title';
+          title.textContent = `${roadSpots.length} arista${roadSpots.length!==1?'s':''} disponible${roadSpots.length!==1?'s':''}`;
+          spotsEl.appendChild(title);
+          roadSpots.slice(0,12).forEach(spot=>{
+            const btn = document.createElement('button');
+            btn.className = 'r-spot-btn';
+            btn.innerHTML = `<span class="r-spot-icon">🚀</span><span class="r-spot-label">${spot.label}</span>`;
+            btn.onclick = ()=>{ haptic(40); onEdgeClick(spot.id); };
+            spotsEl.appendChild(btn);
+          });
+        }
+
+      } else if(act.type === 'move-robber'){
+        // For robber, just show the open board button (listing all hexes is not practical)
+        const robberNote = document.createElement('div');
+        robberNote.className = 'r-spot-section-title';
+        robberNote.style.cssText = 'color:rgba(255,100,100,.7);padding:8px 2px';
+        robberNote.textContent = 'Abre el tablero y toca el sector destino';
+        spotsEl.appendChild(robberNote);
+      }
+
+    } else {
+      spotsEl.style.display = 'none';
+    }
+  }
+
   // Cancelar: solo en fase main (no en starting ni robber)
   document.getElementById('rBtnCancel').style.display = inPlacement && STATE.phase === 'main' ? 'flex':'none';
 
@@ -11193,6 +11385,16 @@ function bindRemoteEvents(){
   document.getElementById('rBtnUndo')?.addEventListener('click', ()=>{
     haptic(40);
     sendAction({type:'undo', deviceId:STATE.myDeviceId});
+  });
+
+  // ── Board view toggle (remote) ──
+  document.getElementById('rBoardViewBtn')?.addEventListener('click', ()=>{
+    haptic(25);
+    _toggleBoardView();
+  });
+  document.getElementById('rBoardViewClose')?.addEventListener('click', ()=>{
+    haptic(20);
+    _closeBoardView();
   });
 
   // Chat toggle header
