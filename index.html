@@ -2082,7 +2082,6 @@ body.remote .toast-item{
       </div>
       <button class="btn" id="bBtnCancel" style="width:100%;font-size:12px;display:none;border-color:rgba(239,68,68,0.4);color:rgba(239,68,68,0.8)">✕ Cancelar colocación</button>
       <!-- Can build strip + undo -->
-      <div class="can-build-strip" id="canBuildStrip" style="display:none"></div>
       <button class="undo-btn" id="bBtnUndo" style="display:none">↩ Deshacer última acción</button>
       <!-- Reaction bar -->
       <div id="reactionBar">
@@ -3322,13 +3321,13 @@ function requestBuild(playerId, type){
   if(STATE.phase==='starting') return toast('Estás en fase inicial', true);
   if(STATE.phase!=='main') return toast('Tira los dados primero', true);
   if(STATE.players[STATE.currentPlayerIdx].id !== playerId) return toast('No es tu turno', true);
-  _saveUndoSnapshot(); // save before committing the build
   const me = STATE.players.find(p=>p.id===playerId);
   if(type!=='dev' && !canAfford(me, COSTS[type])) return toast('Recursos insuficientes', true);
 
   if(type==='dev'){
     if(!STATE.devDeck.length) return toast('Mazo de desarrollo vacío', true);
     if(!canAfford(me, COSTS.dev)) return toast('Recursos insuficientes', true);
+    _saveUndoSnapshot(); // snapshot right before spending resources
     payCost(me, COSTS.dev);
     const card = STATE.devDeck.shift();
     if(card==='vp'){
@@ -3505,6 +3504,7 @@ function placeSettlement(vertexId, playerId){
     return toast('Ubicación inválida', true);
   }
   if(!isStarting){
+    _saveUndoSnapshot();
     payCost(me, COSTS.settlement);
   }
   AudioEngine.sfx.settle();
@@ -3535,6 +3535,7 @@ function placeRoad(edgeId, playerId){
     return toast('Ubicación inválida', true);
   }
   if(!isStarting && STATE.devRoadsLeft === 0){
+    _saveUndoSnapshot();
     payCost(me, COSTS.road);
   }
   AudioEngine.sfx.road();
@@ -3573,6 +3574,7 @@ function placeCity(vertexId, playerId){
   if(me.isBot) flashBotAction(me, 'construye Metrópolis 🌌');
   const _cv = STATE.vertices?.get(vertexId);
   if(_cv){ const _cs=boardSVGToScreen(_cv.x,_cv.y); buildParticles(_cs.x,_cs.y,PLAYER_COLORS[me.color]?.hex||'#d9b46a',20,'city'); }
+  _saveUndoSnapshot();
   payCost(me, COSTS.city);
   me.settlements = me.settlements.filter(s=>s.vertex!==vertexId);
   me.cities.push({vertex:vertexId});
@@ -5525,31 +5527,8 @@ function renderBoardActions(){
     bCancel.style.display = cancellable ? '' : 'none';
   }
 
-  // Can-build strip
-  const stripEl = document.getElementById('canBuildStrip');
+  // Undo button
   const undoBtnEl = document.getElementById('bBtnUndo');
-  if(stripEl){
-    if(STATE.phase==='main' && STATE.lastRoll){
-      const canItems = [];
-      if(canAfford(me,COSTS.settlement) && [...STATE.vertices.values()].some(v=>isVertexValidForSettlement(v.id,me.id,false)))
-        canItems.push({emoji:'🏠', label:'Base Lunar'});
-      if(canAfford(me,COSTS.city) && me.settlements.length>0)
-        canItems.push({emoji:'🌆', label:'Ciudad'});
-      if(canAfford(me,COSTS.road) && [...STATE.edges.values()].some(e=>isEdgeValidForRoad(e.id,me.id,false)))
-        canItems.push({emoji:'🚀', label:'Corredor'});
-      if(canAfford(me,COSTS.dev) && STATE.devDeck.length>0)
-        canItems.push({emoji:'📜', label:'Dev'});
-      if(canItems.length > 0){
-        stripEl.style.display = 'flex';
-        stripEl.innerHTML = '<span style="font-size:9px;color:var(--ink-dim);margin-right:2px">Puedes:</span>' +
-          canItems.map(it=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);border-radius:6px;font-size:10px;color:rgba(34,197,94,.9)">${it.emoji} ${it.label}</span>`).join('');
-      } else {
-        stripEl.style.display = 'none';
-      }
-    } else {
-      stripEl.style.display = 'none';
-    }
-  }
   if(undoBtnEl) undoBtnEl.style.display = (STATE.phase==='main' && STATE.canUndo) ? '' : 'none';
 
   // Hide build buttons grid and trade buttons in non-main phases
