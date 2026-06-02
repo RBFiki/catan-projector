@@ -107,8 +107,96 @@ body.remote #remoteRoot{
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
-  padding-bottom:env(safe-area-inset-bottom, 16px);
+  padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 84px);
 }
+
+/* ─── VP pips en cabecera remota ─── */
+.r-vp-pips{
+  display:flex;gap:3px;align-items:center;margin-top:5px;
+}
+.r-vp-pip{
+  width:8px;height:8px;border-radius:2px;
+  background:rgba(255,255,255,0.12);
+  transition:background .3s;
+  flex-shrink:0;
+}
+.r-vp-pip.filled{background:var(--pip-color,#d9b46a);}
+.r-vp-pip.filled.near{
+  box-shadow:0 0 5px var(--pip-color,#d9b46a);
+  animation:pipPulse 1.6s ease-in-out infinite;
+}
+@keyframes pipPulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ─── Dados en remoto ─── */
+#rDiceBox{
+  display:none;
+  margin:10px 14px 0;
+  padding:12px 14px;
+  background:linear-gradient(135deg,rgba(8,18,40,0.98),rgba(4,10,24,1));
+  border:1px solid rgba(90,200,220,0.22);
+  border-radius:12px;
+  align-items:center;justify-content:center;gap:14px;
+  box-shadow:0 0 18px rgba(90,200,220,0.08);
+}
+#rDiceBox.visible{display:flex}
+.r-die{
+  width:48px;height:48px;border-radius:9px;
+  background:linear-gradient(145deg,rgba(8,18,40,0.98),rgba(4,10,24,1));
+  border:1.5px solid rgba(90,200,220,0.35);
+  box-shadow:0 0 12px rgba(90,200,220,0.15);
+  position:relative;display:grid;
+  grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:5px;gap:2px;
+}
+.r-die.seven-die{border-color:rgba(255,80,60,0.5);}
+.r-dp{
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(130,220,250,0.95),rgba(60,150,200,0.9));
+  box-shadow:0 0 4px rgba(90,200,220,0.6);
+  width:100%;height:100%;
+}
+.r-dp.hidden{visibility:hidden}
+.r-dice-sum{
+  font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:700;
+  color:#5ac8e0;text-shadow:0 0 20px rgba(90,200,220,0.65);
+  line-height:1;
+}
+.r-dice-sum.seven{color:#ff6055;text-shadow:0 0 20px rgba(255,80,60,0.65);}
+@keyframes rDicePop{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.r-die.pop{animation:rDicePop .35s cubic-bezier(.2,1.4,.4,1) both}
+
+/* ─── Hint "te falta X" en botones ─── */
+.miss-hint{
+  display:block;font-size:9px;letter-spacing:.3px;
+  color:rgba(255,120,100,0.8);margin-top:2px;font-family:'JetBrains Mono',monospace;
+}
+
+/* ─── Barra inferior fija ─── */
+#rBottomBar{
+  display:none;
+  padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 10px);
+  background:linear-gradient(180deg,rgba(7,9,13,0.0),rgba(7,9,13,0.97) 30%);
+  border-top:1px solid rgba(255,255,255,0.07);
+  gap:8px;
+  backdrop-filter:blur(12px);
+  z-index:50;
+}
+body.remote #rBottomBar{display:flex}
+#rBottomBar .rbb-btn{
+  flex:1;padding:13px 10px;border-radius:11px;font-size:13px;font-weight:600;
+  letter-spacing:.5px;text-transform:uppercase;
+  background:linear-gradient(180deg,var(--bg-3),var(--bg-2));
+  border:1px solid var(--line);color:var(--ink);
+  touch-action:manipulation;transition:all .15s;
+}
+#rBottomBar .rbb-btn:active{transform:scale(0.97)}
+#rBottomBar .rbb-btn.primary{
+  background:linear-gradient(180deg,var(--gold),#b8923f);
+  color:#1a140a;border-color:transparent;
+  box-shadow:0 4px 12px rgba(217,180,106,0.25);
+}
+#rBottomBar .rbb-btn:disabled{opacity:.35;filter:grayscale(.5)}
+#rBottomBar .rbb-btn.can-afford{border-color:rgba(34,197,94,0.45)!important;}
 body.remote .board-only{display:none !important}
 body.board .remote-only{display:none !important}
 
@@ -2031,6 +2119,7 @@ body.remote .toast-item{
         <div class="me-info">
           <div class="me-name" id="rMeName">—</div>
           <div class="me-vp"><span id="rMeVP">0</span>/<span id="rTargetVP">10</span> <span style="font-size:10px;opacity:0.7">PV</span></div>
+          <div class="r-vp-pips" id="rMeVpPips"></div>
         </div>
       </div>
       <div class="conn-status" id="rConnStatus">conectado</div>
@@ -2045,6 +2134,13 @@ body.remote .toast-item{
         </div>
       </div>
       <div style="text-align:right" id="rTurnDice"></div>
+    </div>
+
+    <!-- Dados visuales (aparece tras tirar) -->
+    <div id="rDiceBox">
+      <div class="r-die" id="rDie1"></div>
+      <div class="r-dice-sum" id="rDiceSum">—</div>
+      <div class="r-die" id="rDie2"></div>
     </div>
 
     <div class="r-hand">
@@ -2218,6 +2314,12 @@ body.remote .toast-item{
       <div class="others-list" id="rOthers"></div>
     </div>
 
+  </div>
+
+  <!-- Barra fija inferior: Tirar / Fin de turno (solo modo remoto) -->
+  <div id="rBottomBar">
+    <button class="rbb-btn primary" id="rBottomRoll">🎲 Tirar</button>
+    <button class="rbb-btn" id="rBottomEndTurn">Fin Turno →</button>
   </div>
 
 </div>
@@ -5159,6 +5261,23 @@ function renderBoardDevCards(){
 let _turnBannerTimer = null;
 let _pendingResAnim = null;   // gains map set during distributeResources for tick-up animation
 let _buildSnapshot  = {};     // {pid: {roads,settlements,cities}} for build-pop animation
+let _remotePrevTurnId = undefined; // tracks turn owner for haptic notification
+
+function haptic(ms){ try{ navigator.vibrate?.(ms); }catch(e){} }
+
+function rDieFaceHTML(n){
+  // 3×3 grid dot patterns for die faces 1–6
+  const PATTERNS = {
+    1:[0,0,0, 0,1,0, 0,0,0],
+    2:[0,0,1, 0,0,0, 1,0,0],
+    3:[0,0,1, 0,1,0, 1,0,0],
+    4:[1,0,1, 0,0,0, 1,0,1],
+    5:[1,0,1, 0,1,0, 1,0,1],
+    6:[1,0,1, 1,0,1, 1,0,1],
+  };
+  const dots = PATTERNS[Math.min(6,Math.max(1,n))] || PATTERNS[1];
+  return dots.map(d=>`<div class="r-dp${d?'':' hidden'}"></div>`).join('');
+}
 function showTurnBanner(player){
   if(STATE.appMode !== 'board') return;
   const banner = document.getElementById('turnChangeBanner');
@@ -5310,20 +5429,67 @@ function renderRemote(){
   const totalVP = me.vp + (me._lrBonus||0) + (me._laBonus||0);
   document.getElementById('rMeVP').textContent = totalVP;
   const tgt = document.getElementById('rTargetVP');
-  if(tgt) tgt.textContent = STATE.targetVP||10;
+  const targetVP = STATE.targetVP || 10;
+  if(tgt) tgt.textContent = targetVP;
+
+  // VP pip bar
+  const pipsEl = document.getElementById('rMeVpPips');
+  if(pipsEl){
+    const colorHex = PLAYER_COLORS[me.color]?.hex || '#d9b46a';
+    const nearWin = totalVP >= targetVP - 2;
+    pipsEl.innerHTML = '';
+    for(let i = 0; i < targetVP; i++){
+      const pip = document.createElement('div');
+      const filled = i < totalVP;
+      pip.className = 'r-vp-pip' + (filled ? ' filled' + (nearWin ? ' near' : '') : '');
+      if(filled) pip.style.setProperty('--pip-color', colorHex);
+      pipsEl.appendChild(pip);
+    }
+  }
 
   // Turn banner
   const current = STATE.players[STATE.currentPlayerIdx];
   const isMyTurn = current && current.id===me.id;
+
+  // Haptic when it becomes my turn
+  if(_remotePrevTurnId !== undefined && current && current.id !== _remotePrevTurnId && current.id === me.id){
+    haptic(200);
+  }
+  _remotePrevTurnId = current?.id;
+
   const banner = document.getElementById('rTurnBanner');
   banner.classList.toggle('your-turn', isMyTurn);
   document.getElementById('rTurnDot').style.background = current?PLAYER_COLORS[current.color].hex:'transparent';
   document.getElementById('rTurnName').textContent = isMyTurn?'¡Tu Turno!':(current?current.name:'—');
   const phaseLabels = {'lobby':'esperando','starting':STATE.startingPhase===1?'1ª colocación':'2ª colocación','rolling':'tirar dados','main':'fase principal','discard':'descartar','robber':'mover Space Pirate','gameover':'fin'};
   document.getElementById('rTurnPhase').textContent = phaseLabels[STATE.phase] || '';
-  document.getElementById('rTurnDice').innerHTML = STATE.lastRoll
-    ? `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-dim)">Último: <b style="color:var(--gold-soft)">${STATE.lastRoll.sum}</b></div>`
-    : '';
+  document.getElementById('rTurnDice').innerHTML = '';
+
+  // Visual dice display
+  const diceBox = document.getElementById('rDiceBox');
+  if(diceBox){
+    if(STATE.lastRoll){
+      const {d1, d2, sum} = STATE.lastRoll;
+      const rollKey = (STATE.lastRoll.t || sum) + '' + d1 + d2;
+      const isNew = diceBox._lastKey !== rollKey;
+      diceBox._lastKey = rollKey;
+      const isSeven = sum === 7;
+      const die1 = document.getElementById('rDie1');
+      const die2 = document.getElementById('rDie2');
+      const sumEl = document.getElementById('rDiceSum');
+      die1.innerHTML = rDieFaceHTML(d1);
+      die2.innerHTML = rDieFaceHTML(d2);
+      die1.className = 'r-die' + (isSeven ? ' seven-die' : '') + (isNew ? ' pop' : '');
+      die2.className = 'r-die' + (isSeven ? ' seven-die' : '') + (isNew ? ' pop' : '');
+      sumEl.textContent = sum;
+      sumEl.className = 'r-dice-sum' + (isSeven ? ' seven' : '');
+      diceBox.classList.add('visible');
+      if(isNew) setTimeout(()=>{ die1?.classList.remove('pop'); die2?.classList.remove('pop'); }, 420);
+    } else {
+      diceBox.classList.remove('visible');
+      diceBox._lastKey = null;
+    }
+  }
 
   // Pre-calcular estado de acción (necesario para cartas dev y botones)
   const canAct = isMyTurn && STATE.phase==='main';
@@ -5447,6 +5613,31 @@ function renderRemote(){
   document.getElementById('rBtnBuildRoad').classList.toggle('btn-can-afford',       _rCanRoad);
   document.getElementById('rBtnBuildCity').classList.toggle('btn-can-afford',       _rCanCity);
   document.getElementById('rBtnBuyDev').classList.toggle('btn-can-afford',          _rCanDev);
+
+  // Missing-resource hints on disabled build buttons
+  function _applyMissHint(btnId, cost){
+    const btn = document.getElementById(btnId);
+    if(!btn) return;
+    btn.querySelectorAll('.miss-hint').forEach(h => h.remove());
+    if(btn.disabled && canAct !== undefined){
+      const missing = [];
+      Object.entries(cost).forEach(([res, need])=>{
+        const have = me.resources[res] || 0;
+        if(have < need) missing.push(`${RESOURCE_INFO[res].emoji} ×${need - have}`);
+      });
+      if(missing.length){
+        const hint = document.createElement('span');
+        hint.className = 'miss-hint';
+        hint.textContent = 'Faltan: ' + missing.join(' ');
+        btn.appendChild(hint);
+      }
+    }
+  }
+  _applyMissHint('rBtnBuildSettlement', COSTS.settlement);
+  _applyMissHint('rBtnBuildRoad',       COSTS.road);
+  _applyMissHint('rBtnBuildCity',       COSTS.city);
+  _applyMissHint('rBtnBuyDev',          COSTS.dev);
+
   document.getElementById('rBtnTrade').disabled = !canAct || inPlacement || inTrade;
   document.getElementById('rBtnTradePlayer').disabled = !canAct || inPlacement || inTrade;
   document.getElementById('rBtnEndTurn').disabled = !((STATE.phase==='main' && STATE.lastRoll && isMyTurn) || (STATE.phase==='starting' && current && current.id===me.id && STATE.startingPlacedThisTurn?.settlement && STATE.startingPlacedThisTurn?.road));
@@ -5623,9 +5814,16 @@ function renderRemote(){
     const isCurrent = STATE.players[STATE.currentPlayerIdx]?.id === p.id;
     const row = document.createElement('div');
     row.className = 'other-row' + (isCurrent ? ' active' : '');
+    const oppBadges = [
+      p._lrBonus ? `<span class="achievement-badge lr" style="font-size:8px;padding:1px 5px">🚀 LR</span>` : '',
+      p._laBonus ? `<span class="achievement-badge la" style="font-size:8px;padding:1px 5px">🛡 LA</span>` : '',
+    ].filter(Boolean).join('');
     row.innerHTML = `
       <div class="o-dot" style="background:${PLAYER_COLORS[p.color].hex}${isCurrent?';box-shadow:0 0 0 2px var(--gold)':''}"></div>
-      <div class="o-name">${p.name}${isCurrent?' <span style="color:var(--gold-soft);font-size:9px">▶ turno</span>':''}</div>
+      <div class="o-name">
+        <div>${p.name}${isCurrent?' <span style="color:var(--gold-soft);font-size:9px">▶ turno</span>':''}</div>
+        ${oppBadges ? `<div style="display:flex;gap:3px;margin-top:2px">${oppBadges}</div>` : ''}
+      </div>
       <div class="o-stats">
         <span title="Recursos en mano">🎴 ${totalRes}</span>
         <span title="Cartas de desarrollo">📜 ${totalDev}</span>
@@ -5635,6 +5833,15 @@ function renderRemote(){
     `;
     others.appendChild(row);
   });
+
+  // Bottom bar sync
+  const rbbRoll = document.getElementById('rBottomRoll');
+  const rbbEnd  = document.getElementById('rBottomEndTurn');
+  const endEnabled = (STATE.phase==='main' && STATE.lastRoll && isMyTurn) ||
+    (STATE.phase==='starting' && current && current.id===me.id &&
+     STATE.startingPlacedThisTurn?.settlement && STATE.startingPlacedThisTurn?.road);
+  if(rbbRoll){ rbbRoll.disabled = !canRoll; rbbRoll.classList.toggle('can-afford', !!canRoll); }
+  if(rbbEnd)  rbbEnd.disabled  = !endEnabled;
 }
 
 function getResourceIcon(k){
@@ -10123,6 +10330,7 @@ function bindBoardEvents(){
     btn.addEventListener('click', ()=>{
       const emoji = btn.dataset.remoteEmoji;
       if(STATE.appMode === 'remote'){
+        haptic(30);
         sendAction({type:'emoji-react', emoji, deviceId:STATE.myDeviceId});
         // Quick visual feedback on the button
         btn.style.transform = 'scale(1.5)';
@@ -10278,19 +10486,19 @@ function bindRemoteEvents(){
   }
 
   document.getElementById('rBtnRoll').onclick = ()=>{
-    sendAction({type:'roll', deviceId:STATE.myDeviceId});
+    haptic(80); sendAction({type:'roll', deviceId:STATE.myDeviceId});
   };
   document.getElementById('rBtnBuildSettlement').onclick = ()=>{
-    sendAction({type:'build', kind:'settlement', deviceId:STATE.myDeviceId});
+    haptic(60); sendAction({type:'build', kind:'settlement', deviceId:STATE.myDeviceId});
   };
   document.getElementById('rBtnBuildRoad').onclick = ()=>{
-    sendAction({type:'build', kind:'road', deviceId:STATE.myDeviceId});
+    haptic(60); sendAction({type:'build', kind:'road', deviceId:STATE.myDeviceId});
   };
   document.getElementById('rBtnBuildCity').onclick = ()=>{
-    sendAction({type:'build', kind:'city', deviceId:STATE.myDeviceId});
+    haptic(60); sendAction({type:'build', kind:'city', deviceId:STATE.myDeviceId});
   };
   document.getElementById('rBtnBuyDev').onclick = ()=>{
-    sendAction({type:'build', kind:'dev', deviceId:STATE.myDeviceId});
+    haptic(60); sendAction({type:'build', kind:'dev', deviceId:STATE.myDeviceId});
   };
   document.getElementById('rBtnTrade').onclick = openTradeModal;
   document.getElementById('rBtnTradePlayer').onclick = openPlayerTradeModal;
@@ -10319,10 +10527,18 @@ function bindRemoteEvents(){
     document.getElementById('devCardModal').classList.add('hidden');
   };
   document.getElementById('rBtnEndTurn').onclick = ()=>{
-    sendAction({type:'end-turn', deviceId:STATE.myDeviceId});
+    haptic(40); sendAction({type:'end-turn', deviceId:STATE.myDeviceId});
   };
   document.getElementById('rBtnCancel').onclick = ()=>{
     sendAction({type:'cancel', deviceId:STATE.myDeviceId});
+  };
+
+  // Bottom bar buttons
+  document.getElementById('rBottomRoll').onclick = ()=>{
+    haptic(80); sendAction({type:'roll', deviceId:STATE.myDeviceId});
+  };
+  document.getElementById('rBottomEndTurn').onclick = ()=>{
+    haptic(40); sendAction({type:'end-turn', deviceId:STATE.myDeviceId});
   };
   document.getElementById('rBtnConfirmDiscard').onclick = ()=>{
     const discardEl = document.getElementById('rDiscardBanner');
