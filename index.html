@@ -5184,6 +5184,11 @@ function vertexLabel(vertexId){
 }
 
 function onVertexClick(vertexId){
+  // In remote mode, delegate to board — broadcastState() is board-only
+  if(STATE.appMode==='remote'){
+    sendAction({type:'place-vertex', vertexId, deviceId:STATE.myDeviceId});
+    return;
+  }
   const action = STATE.pendingAction;
   if(!action) return;
   if(action.type==='place-settlement'){
@@ -5193,11 +5198,19 @@ function onVertexClick(vertexId){
   }
 }
 function onEdgeClick(edgeId){
+  if(STATE.appMode==='remote'){
+    sendAction({type:'place-edge', edgeId, deviceId:STATE.myDeviceId});
+    return;
+  }
   const action = STATE.pendingAction;
   if(!action || action.type!=='place-road') return;
   placeRoad(edgeId, action.playerId);
 }
 function onHexClick(hex){
+  if(STATE.appMode==='remote'){
+    sendAction({type:'place-hex', hKey:hexKey(hex.q,hex.r), deviceId:STATE.myDeviceId});
+    return;
+  }
   const action = STATE.pendingAction;
   if(action && action.type==='move-robber'){
     moveRobber(hexKey(hex.q, hex.r), action.playerId);
@@ -7695,6 +7708,22 @@ function handleRemoteAction(action){
     renderAll();
   } else if(action.type==='undo'){
     if(STATE.players[STATE.currentPlayerIdx].id===player.id) undoAction();
+  } else if(action.type==='place-vertex'){
+    // Remote player chose a vertex from the spot list or board view
+    const pa = STATE.pendingAction;
+    if(!pa || pa.playerId!==player.id) return;
+    if(pa.type==='place-settlement') placeSettlement(action.vertexId, player.id);
+    else if(pa.type==='place-city')  placeCity(action.vertexId, player.id);
+  } else if(action.type==='place-edge'){
+    // Remote player chose an edge from the spot list or board view
+    const pa = STATE.pendingAction;
+    if(!pa || pa.playerId!==player.id || pa.type!=='place-road') return;
+    placeRoad(action.edgeId, player.id);
+  } else if(action.type==='place-hex'){
+    // Remote player tapped a hex to move the robber
+    const pa = STATE.pendingAction;
+    if(!pa || pa.playerId!==player.id || pa.type!=='move-robber') return;
+    moveRobber(action.hKey, player.id);
   }
 }
 
